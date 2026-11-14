@@ -1,0 +1,34 @@
+/* Identidad ALV Tours: los colores se sobreescriben desde festival.json (config-loader.js) */
+:root{--naranja:#FF6B00;--azul:#00D4FF;--crema:#FEF9E8;--negro:#000;--amarillo:#FFD600}
+*{box-sizing:border-box}
+body{margin:0;background:var(--crema);color:#000;font:700 14px system-ui,sans-serif;padding-bottom:84px}
+.anton,h1,h2,h3{font-family:'Anton',sans-serif;font-weight:400;letter-spacing:.5px}
+.top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:4px solid #000;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+.pill{background:#000;color:var(--amarillo);border-radius:99px;padding:4px 14px;font-size:10px}
+main{max-width:1100px;margin:auto;padding:16px}
+.vivid-bg{background:radial-gradient(circle at 10% 20%,var(--naranja) 0,transparent 35%),radial-gradient(circle at 90% 15%,var(--azul) 0,transparent 30%),var(--crema);border-radius:40px}
+.bus-card{background:#fff;border:5px solid #000;border-radius:40px;box-shadow:12px 12px 0 #000;padding:20px;margin:0 0 24px}
+.poster-wrap{border-radius:24px;padding:5px;background:#000;box-shadow:10px 10px 0 #000;max-width:420px;margin:0 auto 20px}
+.poster-wrap img{width:100%;display:block;border-radius:18px}
+.hero{display:grid;gap:16px;padding:24px}
+@media(min-width:800px){.hero{grid-template-columns:.9fr 1.1fr;align-items:center}.muro{grid-template-columns:1fr 1fr}}
+h1{font-size:44px;color:var(--naranja);margin:.2em 0}
+.tag{background:var(--azul);border:3px solid #000;border-radius:99px;padding:2px 12px;font-size:11px;display:inline-block}
+.muro{display:grid;gap:8px}
+.noticia{cursor:pointer}.noticia img,.foto{width:100%;border-radius:20px;border:3px solid #000}
+.btn{display:inline-block;text-align:center;text-decoration:none;cursor:pointer;color:#000;background:var(--azul);border:4px solid #000;border-radius:99px;padding:12px 18px;font:900 13px system-ui;box-shadow:4px 4px 0 #000}
+.btn.negro{background:#000;color:var(--amarillo)}.btn.naranja{background:var(--naranja);color:#fff}.btn[hidden]{display:none}
+.campo{width:100%;margin:6px 0;padding:13px 18px;border:3px solid #000;border-radius:99px;font:900 14px system-ui;background:#fff}
+.barra{position:fixed;bottom:0;left:0;right:0;z-index:6;background:#fff;border-top:4px solid #000;padding:10px;display:flex;gap:8px;overflow-x:auto}
+.barra .btn{flex:1;white-space:nowrap}
+dialog.modal{max-width:520px;width:92%;margin:auto}dialog::backdrop{background:rgba(0,0,0,.7)}
+.cerrar{float:right;border:3px solid #000;border-radius:50%;background:#fff;width:34px;height:34px;cursor:pointer}
+.msg{color:#c00;min-height:1.2em}
+.mapa{background:#FFFBEB;border:4px solid #000;border-radius:36px;padding:12px;max-width:390px;margin:12px auto}
+.fila{display:flex;justify-content:center;gap:8px;margin:6px 0}
+.tv-mark{width:22px;height:14px;background:#000;clip-path:polygon(15% 0,85% 0,100% 100%,0 100%);margin:6px auto}
+.seat{width:44px;height:44px;border:3px solid #000;border-radius:8px;font-weight:900;cursor:pointer;transition:all .15s ease}
+.seat:hover{transform:translateY(-2px) scale(1.08)}
+.seat.free{background:var(--azul);color:#000}
+.seat.selected{background:var(--naranja);color:#fff;box-shadow:4px 4px 0 #000;transform:scale(1.08)}
+.seat.occupied{background:#000;color:#555;cursor:not-allowed;text-decoration:line-through}
