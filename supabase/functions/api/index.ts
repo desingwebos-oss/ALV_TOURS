@@ -43,8 +43,47 @@ Deno.serve(async (req) => {
       }
       await db.from("attempts").delete().eq("ip", ip).eq("bus_id", bus_id);
       const token = rnd(32);
-      await db.from("sessions").insert({ token_hash: await sha(token), bus_id, expires_at: new Date(Date.now() + 30 * 60e3).toISOString() });
-      return out({ token, expires_in: 1800 });
+      const dur = bus_id === "admin" ? 4 * 3600 : 1800;   // admin: 4 h; buses: 30 min
+      await db.from("sessions").insert({ token_hash: await sha(token), bus_id, expires_at: new Date(Date.now() + dur * 1e3).toISOString() });
+      return out({ token, expires_in: dur });
+    }
+
+    // ---------- AVISOS (público: solo lectura de los activos) ----------
+    if (req.method === "GET" && path === "/news") {
+      const { data } = await db.from("news").select("id,titulo,etiqueta,fecha,fijada,texto,texto_largo,enlace,enlace_texto")
+        .eq("activo", true).order("fecha", { ascending: false }).limit(12);
+      return out(data || []);
+    }
+
+    // ---------- ADMIN (requiere sesión de la KEY "admin") ----------
+    if (path.startsWith("/admin/")) {
+      if (!(await sesion(req, "admin"))) return out({ error: "Sesión inválida" }, 401);
+      if (req.method === "GET" && path === "/admin/news") {
+        const { data } = await db.from("news").select("*").order("fecha", { ascending: false }).order("created_at", { ascending: false }).limit(100);
+        return out(data || []);
+      }
+      if (req.method === "POST" && path === "/admin/news-save") {
+        const b = await req.json();
+        const t = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
+        const fila = {
+          titulo: t(b.titulo, 80), etiqueta: t(b.etiqueta, 20).toUpperCase() || "AVISO",
+          fecha: /^\d{4}-\d{2}-\d{2}$/.test(b.fecha || "") ? b.fecha : new Date().toISOString().slice(0, 10),
+          fijada: b.fijada === true, activo: b.activo !== false,
+          texto: t(b.texto, 200), texto_largo: t(b.texto_largo, 1500),
+          enlace: /^https:\/\//.test(t(b.enlace, 300)) ? t(b.enlace, 300) : "", enlace_texto: t(b.enlace_texto, 30),
+        };
+        if (!fila.titulo) return out({ error: "Escribe un título" }, 400);
+        const esId = typeof b.id === "string" && /^[0-9a-f-]{36}$/i.test(b.id);
+        const { data, error } = esId ? await db.from("news").update(fila).eq("id", b.id).select().maybeSingle() : await db.from("news").insert(fila).select().maybeSingle();
+        return error || !data ? out({ error: "No se pudo guardar" }, 400) : out(data);
+      }
+      if (req.method === "POST" && path === "/admin/news-delete") {
+        const { id } = await req.json();
+        if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id)) return out({ error: "Datos inválidos" }, 400);
+        await db.from("news").delete().eq("id", id);
+        return out({ ok: true });
+      }
+      return out({ error: "No encontrado" }, 404);
     }
 
     if (req.method === "GET" && path === "/seats") {            // sin datos personales, solo números de asiento

@@ -6,7 +6,14 @@ GitHub Pages solo sirve archivos estáticos: todo lo que ve el navegador es púb
 los asientos y los datos personales viven en Supabase Postgres con RLS, accesibles solo por la Edge Function.
 
 ## Cambiar de festival (5 min)
-Edita `config/festival.json`, `config/buses.json` (1–6 buses; `activo:false` los oculta) y `config/news.json`. No se toca código.
+Edita `config/festival.json`, `config/buses.json` (1–6 buses; `activo:false` los oculta; cada bus necesita su KEY en `bus_keys`) y `config/news.json`. No se toca código.
+
+## Panel de administrador (publicar desde el celular)
+1. En Supabase > SQL Editor ejecuta `supabase/actualizar_admin.sql` (crea la tabla `news`). Antes de correrlo, descomenta y cambia la frase de la KEY admin
+   (`insert into bus_keys values ('admin', crypt('TU-FRASE-LARGA', gen_salt('bf',10)))`) y las KEYs de bus3–bus6.
+2. Vuelve a desplegar la función: `supabase functions deploy api --no-verify-jwt`
+3. Abre `https://TU-USUARIO.github.io/ALV_TOURS/#/admin` en el celular (agrégalo a pantalla de inicio), escribe la KEY y publica/edita/fija/oculta/borra avisos.
+La sesión dura 4 h y la KEY se valida solo en el servidor (5 intentos fallidos = bloqueo de 15 min). Si la API no responde, el sitio muestra `config/news.json`.
 
 ## Publicar avisos, itinerarios y lineup (sin tocar código)
 - **Avisos:** edita `config/news.json` en GitHub. Campos: `titulo`, `etiqueta` (LINEUP, ITINERARIO, AVISO…), `fecha` (AAAA-MM-DD),

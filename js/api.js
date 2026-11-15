@@ -14,3 +14,7 @@ export const getSeats = (bus_id, token) => call('/seats?bus_id='+encodeURICompon
 export const holdSeat = (bus_id, seat, token, release=false) => call('/hold-seat', {method:'POST', body:{bus_id, seat, release}, token});
 export const createReservation = (data, token) => call('/create-reservation', {method:'POST', body:data, token});
 export const myReservation = folio => call('/my-reservation?folio='+encodeURIComponent(folio));
+// Admin (avisos): requieren el token de la KEY "admin"
+export const adminNews = token => call('/admin/news', {token});
+export const adminSave = (aviso, token) => call('/admin/news-save', {method:'POST', body:aviso, token});
+export const adminDelete = (id, token) => call('/admin/news-delete', {method:'POST', body:{id}, token});

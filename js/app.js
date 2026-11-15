@@ -53,32 +53,38 @@ function carrusel(nombres){                  // carrusel con scroll-snap; se det
   return h('div', {class:'car'}, boton('‹', 'Anterior', -1), pista, boton('›', 'Siguiente', 1));
 }
 
+const pieza = (clase, src) => h('img', {class:'pz ' + clase, src, alt:'', loading:'lazy'});
 function inicio(){
   const f = cfg.festival, lista = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim()) : [];
   const destacados = lista(f.lineup_destacados), cartel = lista(f.lineup_cartel);
   const wa = /^\d{10}$/.test(f.whatsapp_soporte || '') ? 'https://wa.me/52' + f.whatsapp_soporte : null;
-  const hero = h('section', {class:'hero'},
-    f.banner ? h('figure', {class:'banner'}, h('img', {src:f.banner, alt:f.nombre})) : h('h1', {}, f.nombre),
+  // banner sobrio estilo collage: piezas recortadas del arte, ligeramente giradas y encimadas
+  const collage = f.banner ? h('figure', {class:'collage', role:'img', 'aria-label':f.nombre},
+    pieza('pz-sol', 'img/collage-sol.webp'), pieza('pz-luna', 'img/collage-luna.webp'),
+    pieza('pz-titulo', 'img/collage-titulo.webp'), pieza('pz-volcan', 'img/collage-volcan.webp'), pieza('pz-disco', 'img/collage-disco.webp'),
+    h('span', {class:'cinta-washi'})) : h('h1', {}, f.nombre);
+  const hero = h('section', {class:'hero'}, collage,
     h('div', {class:'bus-card info'},
       h('div', {class:'chips'}, h('span', {class:'chip'}, fmt(f.fecha)), h('span', {class:'chip'}, f.ciudad)),
       h('p', {}, f.bienvenida),
       h('div', {class:'acciones'},
         h('button', {class:'btn negro', id:'btnInstalar', hidden:'', onclick:() => installEvt && installEvt.prompt()}, 'INSTALAR APP'),
         wa ? h('a', {class:'btn', href:wa, rel:'noopener'}, 'Soporte por WhatsApp') : null)));
+  // lista desplegable del cartel: justo debajo de NOVEDADES
+  const desplegable = destacados.length || cartel.length ? h('details', {class:'cartel'}, h('summary', {class:'btn'}, 'VER CARTEL COMPLETO'),
+    h('ul', {class:'cartel-lista'}, ...[...destacados, ...cartel].map(n => h('li', {}, n)))) : null;
   const avisos = cfg.news.length ? h('section', {class:'avisos'}, titulo('AVISOS DEL VIAJE'), h('div', {class:'muro'}, ...cfg.news.map(tarjeta))) : null;
-  const lineup = destacados.length ? h('section', {class:'lineup'}, titulo('LINEUP'), carrusel(destacados),
-    cartel.length ? h('details', {class:'cartel'}, h('summary', {class:'btn'}, 'VER CARTEL COMPLETO'),
-      h('ul', {class:'cartel-lista'}, ...[...destacados, ...cartel].map(n => h('li', {}, n)))) : null) : null;
-  const barra = h('nav', {class:'barra'}, ...cfg.buses.map(b => h('button', {class:'btn', onclick:() => modalBus(b)}, b.nombre)));
-  $app.replaceChildren(...[ticker(cfg.news), hero, avisos, lineup, barra].filter(Boolean));
+  const lineup = destacados.length ? h('section', {class:'lineup'}, titulo('LINEUP'), carrusel(destacados)) : null;
+  const barra = h('nav', {class:'barra', 'aria-label':'Autobuses'}, ...cfg.buses.map(b => h('button', {class:'btn', title:b.nombre, onclick:() => modalBus(b)}, b.nombre.split(' - ')[0])));
+  $app.replaceChildren(...[ticker(cfg.news), desplegable, hero, avisos, lineup, barra].filter(Boolean));
 }
 async function modalBus(b){
-  let s = {taken:[], held:[]}; try { s = await api.getSeats(b.id); } catch {}
-  const oc = s.taken.length + s.held.length, cap = contarAsientos(b.layout);
-  modal(h('h3', {}, b.nombre), b.foto ? h('img', {src:b.foto, alt:b.nombre, class:'foto'}) : null,
-    h('p', {}, 'CHOFER: ' + b.chofer), h('p', {}, 'Ruta: ' + b.puntos_abordaje.join(' → ')),
-    h('p', {}, `Libres: ${cap - oc} • Ocupados: ${oc}`),
-    h('a', {class:'btn naranja', href:'#/bus/' + b.id, onclick:() => document.querySelector('dialog')?.close()}, 'IR A RESERVAR'));
+  const cap = contarAsientos(b.layout), cupo = h('p', {}, `Asientos: ${cap} • consultando disponibilidad…`);
+  const d = modal(h('h3', {}, b.nombre), b.foto ? h('img', {src:b.foto, alt:b.nombre, class:'foto'}) : null,
+    h('p', {}, 'CHOFER: ' + b.chofer), h('p', {}, 'Precio: $' + b.precio + ' MXN'), h('p', {}, 'Ruta: ' + b.puntos_abordaje.join(' → ')), cupo,
+    h('a', {class:'btn naranja', href:'#/bus/' + b.id, onclick:() => d.close()}, 'IR A RESERVAR'));
+  try { const s = await api.getSeats(b.id), oc = s.taken.length + s.held.length; cupo.textContent = `Libres: ${cap - oc} • Ocupados: ${oc}`; }
+  catch { cupo.textContent = `Asientos: ${cap}`; }
 }
 
 /* ---------- PANTALLA 2: reserva por autobús ---------- */
@@ -140,8 +146,64 @@ function reserva(id){
   }
 }
 
+/* ---------- PANTALLA 3: panel de administrador (#/admin) ---------- */
+const ETIQUETAS = ['AVISO', 'ITINERARIO', 'URGENTE', 'ABORDAJE', 'LINEUP', 'CLIMA'];
+function admin(){
+  let token = null;
+  const box = h('div', {class:'bus-card'});
+  $app.replaceChildren(h('a', {href:'#/'}, '← Ver sitio'), h('h2', {}, 'PANEL ADMIN'), box);
+  pasoKey();
+  function pasoKey(m = ''){
+    const inp = h('input', {type:'password', class:'campo', placeholder:'KEY de administrador', maxlength:'64', autocomplete:'current-password'}), msg = h('p', {class:'msg'}, m);
+    const ir = async () => { try { token = (await api.validateKey('admin', inp.value.trim())).token; inp.value = ''; panel(); } catch(e) { msg.textContent = e.message; } };
+    inp.addEventListener('keydown', e => { if(e.key === 'Enter') ir(); });
+    box.replaceChildren(h('h3', {}, 'ENTRAR'), inp, msg, h('button', {class:'btn negro', onclick:ir}, 'ENTRAR'));
+  }
+  const fallo = (e, msg) => e.status === 401 ? pasoKey('Sesión expirada, escribe la KEY otra vez.') : (msg.textContent = e.message);
+  async function panel(){
+    const msg = h('p', {class:'msg'}), lista = h('div', {class:'adm-lista'});
+    box.replaceChildren(h('button', {class:'btn naranja', onclick:() => formulario()}, '➕ NUEVO AVISO'), msg, lista);
+    let datos = []; try { datos = await api.adminNews(token); } catch(e) { return fallo(e, msg); }
+    if(!datos.length) lista.append(h('p', {}, 'Aún no hay avisos. Crea el primero.'));
+    datos.forEach(n => lista.append(h('article', {class:'adm-item' + (n.activo ? '' : ' oculto')},
+      h('div', {class:'meta'}, h('span', {class:'tag ' + etqClase(n.etiqueta)}, n.etiqueta), fechaOk(n.fecha) ? h('time', {}, fmt(n.fecha)) : null),
+      h('h3', {}, (n.fijada ? '📌 ' : '') + n.titulo), h('p', {}, n.texto),
+      h('div', {class:'acciones'},
+        h('button', {class:'btn', onclick:() => formulario(n)}, 'EDITAR'),
+        h('button', {class:'btn', onclick:() => guardar({...n, activo:!n.activo}, msg)}, n.activo ? 'OCULTAR' : 'MOSTRAR'),
+        h('button', {class:'btn', onclick:() => guardar({...n, fijada:!n.fijada}, msg)}, n.fijada ? 'QUITAR PIN' : 'FIJAR'),
+        h('button', {class:'btn negro', onclick:async () => { if(!confirm('¿Borrar este aviso?')) return;
+          try { await api.adminDelete(n.id, token); panel(); } catch(e) { fallo(e, msg); } }}, 'BORRAR')))));
+  }
+  async function guardar(n, msg){ try { await api.adminSave(n, token); panel(); } catch(e) { fallo(e, msg); } }
+  function formulario(n = {}){
+    const hoy = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+    const f = {
+      etiqueta:h('input', {class:'campo', list:'etiquetas', maxlength:'20', placeholder:'Etiqueta (ej. ITINERARIO)', value:n.etiqueta || 'AVISO'}),
+      titulo:h('input', {class:'campo', maxlength:'80', placeholder:'Título', value:n.titulo || ''}),
+      texto:h('textarea', {class:'campo area', maxlength:'200', rows:'2', placeholder:'Resumen corto (se ve en la tarjeta)'}),
+      largo:h('textarea', {class:'campo area', maxlength:'1500', rows:'6', placeholder:'Detalle completo (se ve al tocar la tarjeta)'}),
+      fecha:h('input', {class:'campo', type:'date', value:fechaOk(n.fecha) ? n.fecha : hoy}),
+      enlace:h('input', {class:'campo', type:'url', maxlength:'300', placeholder:'Enlace https:// (opcional)', value:n.enlace || ''}),
+      fijada:h('input', {type:'checkbox'}), activo:h('input', {type:'checkbox'})};
+    f.texto.value = n.texto || ''; f.largo.value = n.texto_largo || ''; f.fijada.checked = !!n.fijada; f.activo.checked = n.activo !== false;
+    const msg = h('p', {class:'msg'});
+    box.replaceChildren(h('h3', {}, n.id ? 'EDITAR AVISO' : 'NUEVO AVISO'),
+      h('datalist', {id:'etiquetas'}, ...ETIQUETAS.map(e => h('option', {value:e}))),
+      f.etiqueta, f.titulo, f.texto, f.largo, f.fecha, f.enlace,
+      h('label', {}, f.fijada, ' Fijar arriba'), h('br'), h('label', {}, f.activo, ' Visible en el sitio'), msg,
+      h('div', {class:'acciones'},
+        h('button', {class:'btn negro', onclick:async () => {
+          if(!f.titulo.value.trim()) return msg.textContent = 'Escribe un título';
+          try { await api.adminSave({id:n.id, etiqueta:f.etiqueta.value, titulo:f.titulo.value, texto:f.texto.value, texto_largo:f.largo.value,
+            fecha:f.fecha.value, enlace:f.enlace.value, enlace_texto:n.enlace_texto || '', fijada:f.fijada.checked, activo:f.activo.checked}, token); panel(); }
+          catch(e) { fallo(e, msg); } }}, '📣 PUBLICAR'),
+        h('button', {class:'btn', onclick:panel}, 'CANCELAR')));
+  }
+}
+
 /* ---------- Arranque ---------- */
-function route(){ clearInterval(tick); clearInterval(carTimer); const m = location.hash.match(/^#\/bus\/([\w-]+)$/); m ? reserva(m[1]) : inicio(); scrollTo(0, 0); }
+function route(){ clearInterval(tick); clearInterval(carTimer); const m = location.hash.match(/^#\/bus\/([\w-]+)$/); location.hash === '#/admin' ? admin() : m ? reserva(m[1]) : inicio(); scrollTo(0, 0); }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; document.getElementById('btnInstalar')?.removeAttribute('hidden'); });
 (async () => {
   try { cfg = await loadConfig(); api.setBase(cfg.festival.api_base); document.title = cfg.festival.nombre;
