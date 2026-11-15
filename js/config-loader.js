@@ -6,5 +6,6 @@ export async function loadConfig(){
     if (/^#[0-9a-f]{6}$/i.test(v)) document.documentElement.style.setProperty('--'+k, v);
   return { festival,
     buses: buses.filter(b => b.activo !== false).slice(0, 6),   // si hay menos de 6, no se muestran vacíos
-    news: [...news].sort((a, b) => b.fecha.localeCompare(a.fecha)) };
+    // avisos: los "fijada":true van primero, luego los más recientes; "activo":false los oculta
+    news: news.filter(n => n.activo !== false).sort((a, b) => (b.fijada ? 1 : 0) - (a.fijada ? 1 : 0) || (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 12) };
 }

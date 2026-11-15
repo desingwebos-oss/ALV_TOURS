@@ -8,6 +8,14 @@ los asientos y los datos personales viven en Supabase Postgres con RLS, accesibl
 ## Cambiar de festival (5 min)
 Edita `config/festival.json`, `config/buses.json` (1–6 buses; `activo:false` los oculta) y `config/news.json`. No se toca código.
 
+## Publicar avisos, itinerarios y lineup (sin tocar código)
+- **Avisos:** edita `config/news.json` en GitHub. Campos: `titulo`, `etiqueta` (LINEUP, ITINERARIO, AVISO…), `fecha` (AAAA-MM-DD),
+  `texto` (resumen), `texto_largo` (detalle; usa `\n` para saltos de línea), `imagen` (ruta dentro del repo, ej. `img/foto.webp`, opcional),
+  `fijada: true` (sale primero), `activo: false` (lo oculta) y, opcional, `enlace` (solo `https://`) con `enlace_texto`.
+- **Lineup:** `lineup_destacados` (salen en el carrusel) y `lineup_cartel` (el resto, en "Ver cartel completo") dentro de `config/festival.json`.
+- **Banner:** `banner` en `festival.json` apunta a `img/banner.webp`. Para cambiarlo, sube otra imagen a `img/` y cambia la ruta.
+- Todo el contenido se pinta como texto plano (nunca HTML) y la política CSP no permite imágenes ni scripts externos.
+
 ## Puesta en marcha
 1. Crea un proyecto en Supabase y ejecuta `supabase/schema.sql` en el SQL Editor.
 2. Genera cada KEY con el `insert ... crypt(...)` del final del schema (una por bus; cámbialas por cada festival).
