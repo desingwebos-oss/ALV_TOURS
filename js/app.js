@@ -107,7 +107,9 @@ function inicio(){
         wa ? h('a', {class:'btn', href:wa, rel:'noopener'}, 'Soporte por WhatsApp') : null)));
   // lista desplegable del cartel: justo debajo de NOVEDADES
   const desplegable = destacados.length || cartel.length ? h('details', {class:'cartel'}, h('summary', {class:'btn'}, 'VER CARTEL COMPLETO'),
-    h('ul', {class:'cartel-lista'}, ...[...destacados, ...cartel].map(n => h('li', {}, n)))) : null;
+    h('ul', {class:'cartel-lista'}, ...[...destacados, ...cartel].map(n => {
+      const u = (f.lineup_instagram || {})[n];            // usuario de Instagram (solo letras, números, . y _)
+      return h('li', {}, /^[A-Za-z0-9._]{1,30}$/.test(u || '') ? h('a', {href:'https://www.instagram.com/' + u + '/', target:'_blank', rel:'noopener noreferrer', 'aria-label':n + ' en Instagram'}, n) : n); }))) : null;
   const avisos = cfg.news.length ? h('section', {class:'avisos'}, titulo('AVISOS DEL VIAJE'), h('div', {class:'muro'}, ...cfg.news.map(tarjeta))) : null;
   const lineup = destacados.length ? h('section', {class:'lineup'}, titulo('LINEUP'), carrusel(destacados)) : null;
   $app.replaceChildren(...[ticker(cfg.news), desplegable, hero, avisos, lineup].filter(Boolean));

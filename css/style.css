@@ -184,3 +184,6 @@ dialog.menu-lateral[open]{animation:menu-entra .22s ease-out}
 .live-fila{display:block;background:#fff8e6;border:3px solid var(--tinta);border-radius:14px;padding:8px 12px;box-shadow:3px 3px 0 var(--tinta)}
 .live-fila .acciones{margin-top:6px}
 .tag.bus-tag{background:var(--azul);color:var(--tinta)}
+.cartel-lista a{color:inherit;text-decoration:none;font-weight:700}
+.cartel-lista li:has(a){cursor:pointer;transition:transform .12s}.cartel-lista li:has(a):hover{transform:translateY(-2px) rotate(-1deg)}
+.cartel-lista a:hover,.cartel-lista a:focus-visible{text-decoration:underline;outline:none}
