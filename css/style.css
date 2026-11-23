@@ -169,3 +169,14 @@ dialog.menu-lateral[open]{animation:menu-entra .22s ease-out}
 .menu-inicio{display:inline-block;margin-top:18px}
 
 @media(prefers-reduced-motion:reduce){.ticker-pista{animation:none}.btn,.noticia,.seat,.menu-btn,.menu-item{transition:none}dialog.menu-lateral[open]{animation:none}}
+
+/* Tracker de todos los buses en la portada */
+.tracker-home{margin-bottom:14px}.tracker-home h3{margin-top:0}
+.live-lista{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+@media(min-width:800px){.live-lista{grid-template-columns:1fr 1fr}}
+.live-fila{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;cursor:pointer;color:var(--tinta);background:#fff8e6;border:3px solid var(--tinta);border-radius:14px;padding:8px 12px;box-shadow:3px 3px 0 var(--tinta);font:inherit}
+.live-fila small{font:700 12px system-ui}
+.live-fila:hover,.live-fila:focus-visible{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--tinta);outline:none}
+.pin-bus{font:900 15px system-ui}.pin-viejo{opacity:.55;filter:grayscale(1)}
+.admin-link{display:inline-block;margin-top:14px;font:700 12px system-ui;color:var(--tinta);opacity:.75;text-decoration:underline}
+.admin-link:hover,.admin-link:focus-visible{opacity:1}

@@ -10,16 +10,20 @@ export function distanciaKm(a, b){                       // fórmula haversine
   return 12742 * Math.asin(Math.sqrt(x));
 }
 export function crearMapa(){
-  const caja = el('div', 'mapa-vivo'), capa = el('div', 'mapa-tiles'), pinBus = el('div', 'pin pin-bus', '🚌'), pinMeta = el('div', 'pin pin-meta', '🏁');
+  const caja = el('div', 'mapa-vivo'), capa = el('div', 'mapa-tiles'), pinMeta = el('div', 'pin pin-meta', '🏁');
   const attr = el('a', 'mapa-attr', '© OpenStreetMap'); attr.href = 'https://www.openstreetmap.org/copyright'; attr.target = '_blank'; attr.rel = 'noopener noreferrer';
-  pinMeta.hidden = true; caja.append(capa, pinMeta, pinBus, attr);
-  const teselas = new Map();
-  function pintar(bus, meta){
+  pinMeta.hidden = true; caja.append(capa, pinMeta, attr);
+  const teselas = new Map(), pines = new Map();
+  // pts: [{lat, lng, etq}] (uno o varios buses); meta: destino opcional. Ajusta el zoom para que quepan todos.
+  function pintarTodos(pts, meta){
     const w = caja.clientWidth || 320, h = caja.clientHeight || 260, hayMeta = meta && coordOk(meta.lat, meta.lng);
-    let z = 16;
-    if(hayMeta) for(; z > 4; z--){ const a = mundo(bus.lat, bus.lng, z), b = mundo(meta.lat, meta.lng, z); if(Math.abs(a.x - b.x) < w - 90 && Math.abs(a.y - b.y) < h - 90) break; }
-    const pb = mundo(bus.lat, bus.lng, z), pm = hayMeta ? mundo(meta.lat, meta.lng, z) : null;
-    const c = pm ? {x:(pb.x + pm.x) / 2, y:(pb.y + pm.y) / 2} : pb, ox = c.x - w / 2, oy = c.y - h / 2, n = 2 ** z, vistas = new Set();
+    const todos = hayMeta ? [...pts, meta] : pts; if(!todos.length) return;
+    let z = 16, a;
+    const caja_ = zz => { const m = todos.map(p => mundo(p.lat, p.lng, zz)), xs = m.map(p => p.x), ys = m.map(p => p.y);
+      return {x0:Math.min(...xs), x1:Math.max(...xs), y0:Math.min(...ys), y1:Math.max(...ys)}; };
+    for(; z > 4; z--){ a = caja_(z); if(a.x1 - a.x0 < w - 90 && a.y1 - a.y0 < h - 90) break; }
+    a = caja_(z);
+    const ox = (a.x0 + a.x1) / 2 - w / 2, oy = (a.y0 + a.y1) / 2 - h / 2, n = 2 ** z, vistas = new Set();
     for(let ty = Math.max(0, Math.floor(oy / T)); ty <= Math.min(n - 1, Math.floor((oy + h) / T)); ty++)
       for(let tx = Math.floor(ox / T); tx <= Math.floor((ox + w) / T); tx++){
         const k = `${z}/${(tx % n + n) % n}/${ty}`; vistas.add(k);
@@ -28,8 +32,17 @@ export function crearMapa(){
         im.style.transform = `translate(${tx * T - ox}px,${ty * T - oy}px)`;
       }
     for(const [k, im] of teselas) if(!vistas.has(k)){ im.remove(); teselas.delete(k); }
-    pinBus.style.transform = `translate(${pb.x - ox}px,${pb.y - oy}px)`;
-    pinMeta.hidden = !pm; if(pm) pinMeta.style.transform = `translate(${pm.x - ox}px,${pm.y - oy}px)`;
+    const ids = new Set();
+    for(const p of pts){
+      const k = String(p.etq); ids.add(k);
+      let pin = pines.get(k); if(!pin){ pin = el('div', 'pin pin-bus', k); caja.append(pin); pines.set(k, pin); }
+      pin.classList.toggle('pin-viejo', p.activo === false);
+      const q = mundo(p.lat, p.lng, z); pin.style.transform = `translate(${q.x - ox}px,${q.y - oy}px)`;
+    }
+    for(const [k, pin] of pines) if(!ids.has(k)){ pin.remove(); pines.delete(k); }
+    pinMeta.hidden = !hayMeta;
+    if(hayMeta){ const q = mundo(meta.lat, meta.lng, z); pinMeta.style.transform = `translate(${q.x - ox}px,${q.y - oy}px)`; }
   }
-  return {el:caja, pintar};
+  const pintar = (bus, meta) => pintarTodos([{lat:bus.lat, lng:bus.lng, etq:'🚌'}], meta);   // un solo bus (ventana EN VIVO)
+  return {el:caja, pintar, pintarTodos};
 }

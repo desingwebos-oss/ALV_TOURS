@@ -64,6 +64,12 @@ Deno.serve(async (req) => {
       return out({ tiene: true, activo: edad <= 120, edad, lat: data.lat, lng: data.lng, speed: data.speed, heading: data.heading });
     }
 
+    if (req.method === "GET" && path === "/pos-all") {          // todas las últimas posiciones en una sola respuesta (público)
+      const { data } = await db.from("bus_pos").select("bus_id,lat,lng,speed,heading,updated_at").limit(20);
+      return out((data || []).map((x) => { const edad = Math.max(0, Math.round((Date.now() - new Date(x.updated_at).getTime()) / 1000));
+        return { bus_id: x.bus_id, tiene: true, activo: edad <= 120, edad, lat: x.lat, lng: x.lng, speed: x.speed, heading: x.heading }; }));
+    }
+
     // ---------- ADMIN (requiere sesión de la KEY "admin") ----------
     if (path.startsWith("/admin/")) {
       if (!(await sesion(req, "admin"))) return out({ error: "Sesión inválida" }, 401);

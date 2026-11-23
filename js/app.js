@@ -54,6 +54,35 @@ function carrusel(nombres){                  // carrusel con scroll-snap; se det
   return h('div', {class:'car'}, boton('‹', 'Anterior', -1), pista, boton('›', 'Siguiente', 1));
 }
 
+/* ---------- Tracker de TODOS los buses (portada, dentro de AVISOS DEL VIAJE) ---------- */
+let liveTimer;
+const hace = seg => seg < 60 ? seg + ' s' : seg < 3600 ? Math.round(seg / 60) + ' min' : Math.round(seg / 3600) + ' h';
+function trackerBuses(){
+  const mapa = crearMapa(), meta = cfg.festival.destino || {}, nota = h('p', {class:'live-estado'}, 'Buscando autobuses…');
+  const num = b => (b.id.match(/\d+/) || [b.id])[0];
+  const estados = new Map(), lista = h('ul', {class:'live-lista'}, ...cfg.buses.map(b => {
+    const st = h('small', {}, 'Aún no sale'); estados.set(b.id, st);
+    return h('li', {}, h('button', {class:'live-fila', type:'button', onclick:() => enVivo(b)}, h('b', {}, b.nombre), st)); }));
+  mapa.el.hidden = true;
+  async function leer(){
+    if(document.hidden) return;
+    let ps; try { ps = await api.getPosAll(cfg.buses.map(b => b.id)); } catch { nota.textContent = 'No se pudo consultar la ubicación. Reintentando…'; return; }
+    const pts = [];
+    for(const b of cfg.buses){
+      const p = ps[b.id], st = estados.get(b.id);
+      if(!p || !p.tiene || !coordOk(p.lat, p.lng)){ st.textContent = 'Aún no sale'; continue; }
+      const t = [(p.activo ? '🟢 En ruta' : '⚪ Sin señal') + ' · hace ' + hace(p.edad)];
+      if(p.activo && Number.isFinite(p.speed)) t.push(Math.round(p.speed * 3.6) + ' km/h');
+      if(coordOk(meta.lat, meta.lng)) t.push('~' + distanciaKm(p, meta).toFixed(1) + ' km al destino');
+      st.textContent = t.join(' · '); pts.push({lat:p.lat, lng:p.lng, etq:num(b), activo:p.activo});
+    }
+    mapa.el.hidden = !pts.length; if(pts.length) mapa.pintarTodos(pts, meta);
+    nota.textContent = pts.length ? 'Toca un autobús para ver su mapa.' : 'Los autobuses compartirán su ubicación cuando salgan.';
+  }
+  clearInterval(liveTimer); liveTimer = setInterval(leer, 15000); leer();
+  return h('div', {class:'bus-card tracker-home'}, h('h3', {}, '📍 BUSES EN VIVO'), mapa.el, nota, lista);
+}
+
 const pieza = (clase, src) => h('img', {class:'pz ' + clase, src, alt:'', loading:'lazy'});
 function inicio(){
   const f = cfg.festival, lista = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim()) : [];
@@ -74,7 +103,8 @@ function inicio(){
   // lista desplegable del cartel: justo debajo de NOVEDADES
   const desplegable = destacados.length || cartel.length ? h('details', {class:'cartel'}, h('summary', {class:'btn'}, 'VER CARTEL COMPLETO'),
     h('ul', {class:'cartel-lista'}, ...[...destacados, ...cartel].map(n => h('li', {}, n)))) : null;
-  const avisos = cfg.news.length ? h('section', {class:'avisos'}, titulo('AVISOS DEL VIAJE'), h('div', {class:'muro'}, ...cfg.news.map(tarjeta))) : null;
+  const avisos = cfg.news.length || cfg.buses.length ? h('section', {class:'avisos'}, titulo('AVISOS DEL VIAJE'),
+    cfg.buses.length ? trackerBuses() : null, cfg.news.length ? h('div', {class:'muro'}, ...cfg.news.map(tarjeta)) : null) : null;
   const lineup = destacados.length ? h('section', {class:'lineup'}, titulo('LINEUP'), carrusel(destacados)) : null;
   $app.replaceChildren(...[ticker(cfg.news), desplegable, hero, avisos, lineup].filter(Boolean));
 }
@@ -88,7 +118,7 @@ function menuLateral(){
       h('p', {class:'menu-sub'}, 'Elige tu autobús'),
       h('ul', {class:'menu-lista'}, ...cfg.buses.map(b => h('li', {},
         h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); modalBus(b); }},
-          h('b', {}, b.nombre.split(' - ')[0]), h('small', {}, contarAsientos(b.layout) + ' asientos'))))),
+          h('b', {}, b.nombre), h('small', {}, contarAsientos(b.layout) + ' asientos'))))),
       h('a', {class:'menu-inicio', href:'#/', onclick:() => d.close()}, '← Ir al inicio')));
   d.addEventListener('click', e => { if(e.target === d) d.close(); });            // tocar fuera cierra
   d.addEventListener('close', () => btn.setAttribute('aria-expanded', 'false'));
@@ -99,7 +129,7 @@ function menuLateral(){
 async function modalBus(b){
   const cap = contarAsientos(b.layout), cupo = h('p', {}, `Asientos: ${cap} • consultando disponibilidad…`);
   const d = modal(h('h3', {}, b.nombre), b.foto ? h('img', {src:b.foto, alt:b.nombre, class:'foto'}) : null,
-    h('p', {}, 'CHOFER: ' + b.chofer), h('p', {class:'itin-tit'}, 'PUNTOS DE ABORDAJE'),
+    h('p', {class:'itin-tit'}, 'PUNTOS DE ABORDAJE'),
     h('ul', {class:'itin'}, ...(b.itinerario || []).map(x => h('li', {}, h('b', {}, x.punto), h('span', {}, 'Cita: ' + x.cita), h('span', {}, 'Salida: ' + x.salida)))), cupo,
     h('div', {class:'acciones'}, h('a', {class:'btn naranja', href:'#/bus/' + b.id, onclick:() => d.close()}, 'IR A RESERVAR'),
       h('button', {class:'btn', type:'button', onclick:() => { d.close(); enVivo(b); }}, '📍 VER BUS EN VIVO')));
@@ -108,7 +138,6 @@ async function modalBus(b){
 }
 
 /* ---------- Tracker: ubicación del bus en vivo (la transmite el celular del admin) ---------- */
-const hace = seg => seg < 60 ? seg + ' s' : seg < 3600 ? Math.round(seg / 60) + ' min' : Math.round(seg / 3600) + ' h';
 function enVivo(b){
   const mapa = crearMapa(), estado = h('p', {class:'live-estado'}, 'Buscando señal…'), datos = h('p', {class:'live-datos'});
   const enlace = h('a', {class:'btn', target:'_blank', rel:'noopener noreferrer', hidden:''}, 'ABRIR EN GOOGLE MAPS');
@@ -283,7 +312,7 @@ function admin(){
 }
 
 /* ---------- Arranque ---------- */
-function route(){ clearInterval(tick); clearInterval(carTimer); if(location.hash !== '#/admin') detenerGps(); const m = location.hash.match(/^#\/bus\/([\w-]+)$/); location.hash === '#/admin' ? admin() : m ? reserva(m[1]) : inicio(); scrollTo(0, 0); }
+function route(){ clearInterval(tick); clearInterval(carTimer); clearInterval(liveTimer); if(location.hash !== '#/admin') detenerGps(); const m = location.hash.match(/^#\/bus\/([\w-]+)$/); location.hash === '#/admin' ? admin() : m ? reserva(m[1]) : inicio(); scrollTo(0, 0); }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; document.getElementById('btnInstalar')?.removeAttribute('hidden'); });
 (async () => {
   try { cfg = await loadConfig(); api.setBase(cfg.festival.api_base); document.title = cfg.festival.nombre;

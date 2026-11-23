@@ -22,3 +22,9 @@ export const adminDelete = (id, token) => call('/admin/news-delete', {method:'PO
 export const getPos = bus_id => call('/pos?bus_id='+encodeURIComponent(bus_id));
 export const adminPos = (datos, token) => call('/admin/pos-set', {method:'POST', body:datos, token});
 export const adminPosStop = (bus_id, token) => call('/admin/pos-stop', {method:'POST', body:{bus_id}, token});
+// Todas las posiciones de una vez (1 petición). Si la función aún no tiene /pos-all, cae a una petición por bus.
+export async function getPosAll(ids){
+  try { const d = await call('/pos-all'); if(Array.isArray(d)) return Object.fromEntries(d.map(x => [x.bus_id, x])); } catch {}
+  const r = await Promise.all(ids.map(id => getPos(id).then(x => [id, x]).catch(() => [id, {tiene:false}])));
+  return Object.fromEntries(r);
+}
