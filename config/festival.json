@@ -2,6 +2,7 @@
   "nombre": "TECATE COMUNA",
   "fecha": "2026-11-28",
   "ciudad": "Foro Cholula",
+  "destino": {"nombre": "Foro Cholula", "lat": null, "lng": null},
   "banner": "img/banner.webp",
   "poster": "",
   "colores": {

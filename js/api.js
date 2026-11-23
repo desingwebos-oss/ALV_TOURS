@@ -18,3 +18,7 @@ export const myReservation = folio => call('/my-reservation?folio='+encodeURICom
 export const adminNews = token => call('/admin/news', {token});
 export const adminSave = (aviso, token) => call('/admin/news-save', {method:'POST', body:aviso, token});
 export const adminDelete = (id, token) => call('/admin/news-delete', {method:'POST', body:{id}, token});
+// Tracker GPS: lectura pública; envío/paro solo con el token de admin
+export const getPos = bus_id => call('/pos?bus_id='+encodeURIComponent(bus_id));
+export const adminPos = (datos, token) => call('/admin/pos-set', {method:'POST', body:datos, token});
+export const adminPosStop = (bus_id, token) => call('/admin/pos-stop', {method:'POST', body:{bus_id}, token});

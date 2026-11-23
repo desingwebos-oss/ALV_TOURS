@@ -17,6 +17,13 @@ Bus 7: ejecuta `supabase/agregar_bus7.sql` para crear su KEY.
 ## Itinerario por bus
 Cada bus tiene `itinerario`: lista de `{punto, cita, salida}`. Se muestra en la ventana del bus (en lugar del precio) y como opciones de abordaje al reservar; `puntos_abordaje` solo repite los nombres.
 
+## Tracker GPS del bus
+1. En Supabase > SQL Editor ejecuta `supabase/agregar_tracker.sql` y vuelve a desplegar la función (`supabase functions deploy api --no-verify-jwt`).
+2. En `config/festival.json` llena `destino.lat` y `destino.lng` (Google Maps: clic derecho sobre el recinto > copiar coordenadas) para mostrar 🏁 y "Faltan ~X km".
+3. Durante el viaje, el admin abre `#/admin`, entra con su KEY, elige el bus y toca **INICIAR UBICACIÓN** (acepta el permiso de GPS). Debe dejar la pantalla encendida y con datos.
+4. Los pasajeros abren el menú > bus > **VER BUS EN VIVO**. Se actualiza cada 10 s; si pasan 2 min sin señal se muestra "Sin señal reciente". Solo se guarda la última posición (sin historial).
+El mapa usa teselas de OpenStreetMap (permitidas en la CSP de `index.html`). Para mucho tráfico conviene un proveedor de mapas propio.
+
 ## Menú lateral
 El botón de 3 rayitas (arriba a la izquierda, junto al nombre del festival) abre la ventana "Seleccionar asientos" con la lista de buses.
 

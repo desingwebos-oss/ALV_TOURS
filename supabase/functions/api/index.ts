@@ -1,4 +1,4 @@
-// Edge Function "api": validate-key, seats, hold-seat, create-reservation, my-reservation.
+// Edge Function "api": validate-key, seats, hold-seat, create-reservation, my-reservation, pos (tracker GPS).
 // Secretos (SUPABASE_SERVICE_ROLE_KEY, ALLOWED_ORIGIN) viven solo en Supabase, nunca en el repo.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
@@ -55,6 +55,15 @@ Deno.serve(async (req) => {
       return out(data || []);
     }
 
+    // ---------- TRACKER (público: solo la última posición del bus; "activo" = actualizada hace <= 2 min) ----------
+    if (req.method === "GET" && path === "/pos") {
+      const bus = q.get("bus_id") || ""; if (!busOk(bus)) return out({ error: "Datos inválidos" }, 400);
+      const { data } = await db.from("bus_pos").select("lat,lng,speed,heading,updated_at").eq("bus_id", bus).maybeSingle();
+      if (!data) return out({ tiene: false, activo: false });
+      const edad = Math.max(0, Math.round((Date.now() - new Date(data.updated_at).getTime()) / 1000));
+      return out({ tiene: true, activo: edad <= 120, edad, lat: data.lat, lng: data.lng, speed: data.speed, heading: data.heading });
+    }
+
     // ---------- ADMIN (requiere sesión de la KEY "admin") ----------
     if (path.startsWith("/admin/")) {
       if (!(await sesion(req, "admin"))) return out({ error: "Sesión inválida" }, 401);
@@ -81,6 +90,20 @@ Deno.serve(async (req) => {
         const { id } = await req.json();
         if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id)) return out({ error: "Datos inválidos" }, 400);
         await db.from("news").delete().eq("id", id);
+        return out({ ok: true });
+      }
+      if (req.method === "POST" && path === "/admin/pos-set") {        // el celular del admin envía su GPS
+        const b = await req.json();
+        const num = (v: unknown, a: number, z: number) => typeof v === "number" && isFinite(v) && v >= a && v <= z ? v : null;
+        const lat = num(b.lat, -90, 90), lng = num(b.lng, -180, 180);
+        if (!busOk(b.bus_id) || lat === null || lng === null) return out({ error: "Datos inválidos" }, 400);
+        const { error } = await db.from("bus_pos").upsert({ bus_id: b.bus_id, lat, lng, speed: num(b.speed, 0, 100), heading: num(b.heading, 0, 360),
+          acc: num(b.acc, 0, 100000), updated_at: new Date().toISOString() });
+        return error ? out({ error: "No se pudo guardar" }, 400) : out({ ok: true });
+      }
+      if (req.method === "POST" && path === "/admin/pos-stop") {
+        const { bus_id } = await req.json(); if (!busOk(bus_id)) return out({ error: "Datos inválidos" }, 400);
+        await db.from("bus_pos").delete().eq("bus_id", bus_id);
         return out({ ok: true });
       }
       return out({ error: "No encontrado" }, 404);

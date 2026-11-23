@@ -3,6 +3,7 @@
 import { loadConfig } from './config-loader.js';
 import * as api from './api.js';
 import { renderMapa, contarAsientos } from './seats.js';
+import { crearMapa, distanciaKm, coordOk } from './mapa.js';
 
 const h = (t, a = {}, ...k) => { const e = document.createElement(t);
   for (const [x, v] of Object.entries(a)) x === 'class' ? e.className = v : x.startsWith('on') ? e.addEventListener(x.slice(2), v) : e.setAttribute(x, v);
@@ -100,10 +101,45 @@ async function modalBus(b){
   const d = modal(h('h3', {}, b.nombre), b.foto ? h('img', {src:b.foto, alt:b.nombre, class:'foto'}) : null,
     h('p', {}, 'CHOFER: ' + b.chofer), h('p', {class:'itin-tit'}, 'PUNTOS DE ABORDAJE'),
     h('ul', {class:'itin'}, ...(b.itinerario || []).map(x => h('li', {}, h('b', {}, x.punto), h('span', {}, 'Cita: ' + x.cita), h('span', {}, 'Salida: ' + x.salida)))), cupo,
-    h('a', {class:'btn naranja', href:'#/bus/' + b.id, onclick:() => d.close()}, 'IR A RESERVAR'));
+    h('div', {class:'acciones'}, h('a', {class:'btn naranja', href:'#/bus/' + b.id, onclick:() => d.close()}, 'IR A RESERVAR'),
+      h('button', {class:'btn', type:'button', onclick:() => { d.close(); enVivo(b); }}, '📍 VER BUS EN VIVO')));
   try { const s = await api.getSeats(b.id), oc = s.taken.length + s.held.length; cupo.textContent = `Libres: ${cap - oc} • Ocupados: ${oc}`; }
   catch { cupo.textContent = `Asientos: ${cap}`; }
 }
+
+/* ---------- Tracker: ubicación del bus en vivo (la transmite el celular del admin) ---------- */
+const hace = seg => seg < 60 ? seg + ' s' : seg < 3600 ? Math.round(seg / 60) + ' min' : Math.round(seg / 3600) + ' h';
+function enVivo(b){
+  const mapa = crearMapa(), estado = h('p', {class:'live-estado'}, 'Buscando señal…'), datos = h('p', {class:'live-datos'});
+  const enlace = h('a', {class:'btn', target:'_blank', rel:'noopener noreferrer', hidden:''}, 'ABRIR EN GOOGLE MAPS');
+  mapa.el.hidden = true;
+  const d = modal(h('h3', {}, b.nombre + ' · EN VIVO'), mapa.el, estado, datos, enlace);
+  const meta = cfg.festival.destino || {};
+  async function leer(){
+    try {
+      const p = await api.getPos(b.id);
+      if(!p.tiene){ mapa.el.hidden = true; enlace.hidden = true; datos.textContent = ''; estado.textContent = 'Este autobús aún no comparte su ubicación. Vuelve a revisar cuando salga.'; return; }
+      mapa.el.hidden = false; mapa.pintar(p, meta);
+      estado.textContent = (p.activo ? '🟢 En ruta · actualizado hace ' : '⚪ Sin señal reciente · última posición hace ') + hace(p.edad);
+      const partes = [];
+      if(p.activo && Number.isFinite(p.speed)) partes.push(Math.round(p.speed * 3.6) + ' km/h');
+      if(coordOk(meta.lat, meta.lng)) partes.push('Faltan ~' + distanciaKm(p, meta).toFixed(1) + ' km a ' + (meta.nombre || 'el destino'));
+      datos.textContent = partes.join(' · ');
+      enlace.href = 'https://www.google.com/maps?q=' + p.lat + ',' + p.lng; enlace.hidden = false;
+    } catch { estado.textContent = 'No se pudo consultar la ubicación. Reintentando…'; }
+  }
+  const t = setInterval(leer, 10000); d.addEventListener('close', () => clearInterval(t)); leer();
+}
+
+/* ---------- Transmisión GPS del admin (módulo: se detiene al salir del panel) ---------- */
+let gps = null;                                    // {watch, bus, token, ultimo, wake}
+async function bloquearPantalla(){ try { if(gps && navigator.wakeLock) gps.wake = await navigator.wakeLock.request('screen'); } catch {} }
+function detenerGps(){
+  if(!gps) return; const g = gps; gps = null;
+  navigator.geolocation.clearWatch(g.watch); try { g.wake?.release(); } catch {}
+  api.adminPosStop(g.bus, g.token).catch(() => {});
+}
+document.addEventListener('visibilitychange', () => { if(gps && document.visibilityState === 'visible') bloquearPantalla(); });
 
 /* ---------- PANTALLA 2: reserva por autobús ---------- */
 function reserva(id){
@@ -168,14 +204,40 @@ function reserva(id){
 const ETIQUETAS = ['AVISO', 'ITINERARIO', 'URGENTE', 'ABORDAJE', 'LINEUP', 'CLIMA'];
 function admin(){
   let token = null;
-  const box = h('div', {class:'bus-card'});
-  $app.replaceChildren(h('a', {href:'#/'}, '← Ver sitio'), h('h2', {}, 'PANEL ADMIN'), box);
+  const box = h('div', {class:'bus-card'}), trk = h('div', {class:'bus-card'});
+  $app.replaceChildren(h('a', {href:'#/'}, '← Ver sitio'), h('h2', {}, 'PANEL ADMIN'), box, trk);
   pasoKey();
   function pasoKey(m = ''){
     const inp = h('input', {type:'password', class:'campo', placeholder:'KEY de administrador', maxlength:'64', autocomplete:'current-password'}), msg = h('p', {class:'msg'}, m);
-    const ir = async () => { try { token = (await api.validateKey('admin', inp.value.trim())).token; inp.value = ''; panel(); } catch(e) { msg.textContent = e.message; } };
+    const ir = async () => { try { token = (await api.validateKey('admin', inp.value.trim())).token; inp.value = ''; panel(); tracker(); } catch(e) { msg.textContent = e.message; } };
     inp.addEventListener('keydown', e => { if(e.key === 'Enter') ir(); });
     box.replaceChildren(h('h3', {}, 'ENTRAR'), inp, msg, h('button', {class:'btn negro', onclick:ir}, 'ENTRAR'));
+  }
+  function tracker(){                       // compartir la ubicación GPS de este celular como la de un bus
+    const sel = h('select', {class:'campo'}, ...cfg.buses.map(b => h('option', {value:b.id}, b.nombre)));
+    const est = h('p', {class:'live-estado'}), btn = h('button', {class:'btn naranja', type:'button'});
+    const pintarBtn = () => { btn.textContent = gps ? '■ DETENER UBICACIÓN' : '▶ INICIAR UBICACIÓN'; sel.disabled = !!gps; };
+    const hora = () => new Date().toLocaleTimeString('es-MX');
+    function enviar(pos){
+      if(!gps) return; const ahora = Date.now(); if(ahora - gps.ultimo < 5000) return; gps.ultimo = ahora;
+      const c = pos.coords;
+      api.adminPos({bus_id:gps.bus, lat:c.latitude, lng:c.longitude, speed:c.speed ?? null, heading:c.heading ?? null, acc:c.accuracy}, token)
+        .then(() => { if(gps) est.textContent = `🟢 Transmitiendo · último envío ${hora()} · precisión ±${Math.round(c.accuracy)} m`; })
+        .catch(e => { if(e.status === 401){ detenerGps(); pintarBtn(); est.textContent = 'La sesión expiró. Entra de nuevo con la KEY y reinicia.'; } else est.textContent = '⚠️ Sin internet, reintentando…'; });
+    }
+    btn.addEventListener('click', () => {
+      if(gps){ detenerGps(); pintarBtn(); est.textContent = 'Transmisión detenida.'; return; }
+      if(!navigator.geolocation){ est.textContent = 'Este navegador no tiene GPS.'; return; }
+      est.textContent = 'Pidiendo permiso de ubicación…';
+      gps = {bus:sel.value, token, ultimo:0, wake:null};
+      gps.watch = navigator.geolocation.watchPosition(enviar,
+        er => { est.textContent = er.code === 1 ? 'Permiso de ubicación denegado. Actívalo en el navegador y vuelve a intentar.' : 'No se pudo obtener el GPS (' + er.message + ').'; if(er.code === 1){ detenerGps(); pintarBtn(); } },
+        {enableHighAccuracy:true, maximumAge:5000, timeout:20000});
+      bloquearPantalla(); pintarBtn();
+    });
+    pintarBtn(); est.textContent = gps ? '🟢 Transmitiendo…' : 'Sin transmitir.';
+    trk.replaceChildren(h('h3', {}, '📍 UBICACIÓN DEL BUS'),
+      h('p', {}, 'Elige el bus que va en este celular y toca iniciar. Mantén esta pantalla abierta y el celular con datos y GPS durante el viaje.'), sel, est, btn);
   }
   const fallo = (e, msg) => e.status === 401 ? pasoKey('Sesión expirada, escribe la KEY otra vez.') : (msg.textContent = e.message);
   async function panel(){
@@ -221,7 +283,7 @@ function admin(){
 }
 
 /* ---------- Arranque ---------- */
-function route(){ clearInterval(tick); clearInterval(carTimer); const m = location.hash.match(/^#\/bus\/([\w-]+)$/); location.hash === '#/admin' ? admin() : m ? reserva(m[1]) : inicio(); scrollTo(0, 0); }
+function route(){ clearInterval(tick); clearInterval(carTimer); if(location.hash !== '#/admin') detenerGps(); const m = location.hash.match(/^#\/bus\/([\w-]+)$/); location.hash === '#/admin' ? admin() : m ? reserva(m[1]) : inicio(); scrollTo(0, 0); }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; document.getElementById('btnInstalar')?.removeAttribute('hidden'); });
 (async () => {
   try { cfg = await loadConfig(); api.setBase(cfg.festival.api_base); document.title = cfg.festival.nombre;
