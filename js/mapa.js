@@ -15,15 +15,17 @@ export function crearMapa(){
   pinMeta.hidden = true; caja.append(capa, pinMeta, attr);
   const teselas = new Map(), pines = new Map();
   // pts: [{lat, lng, etq}] (uno o varios buses); meta: destino opcional. Ajusta el zoom para que quepan todos.
-  function pintarTodos(pts, meta){
+  function pintarTodos(pts, meta, vista){      // vista: {lat, lng, z} se usa solo si no hay ningún punto que mostrar
     const w = caja.clientWidth || 320, h = caja.clientHeight || 260, hayMeta = meta && coordOk(meta.lat, meta.lng);
-    const todos = hayMeta ? [...pts, meta] : pts; if(!todos.length) return;
-    let z = 16, a;
+    const todos = hayMeta ? [...pts, meta] : pts; if(!todos.length && !vista) return;
+    let z = 16, a, ox, oy;
     const caja_ = zz => { const m = todos.map(p => mundo(p.lat, p.lng, zz)), xs = m.map(p => p.x), ys = m.map(p => p.y);
       return {x0:Math.min(...xs), x1:Math.max(...xs), y0:Math.min(...ys), y1:Math.max(...ys)}; };
-    for(; z > 4; z--){ a = caja_(z); if(a.x1 - a.x0 < w - 90 && a.y1 - a.y0 < h - 90) break; }
-    a = caja_(z);
-    const ox = (a.x0 + a.x1) / 2 - w / 2, oy = (a.y0 + a.y1) / 2 - h / 2, n = 2 ** z, vistas = new Set();
+    if(todos.length){
+      for(; z > 4; z--){ a = caja_(z); if(a.x1 - a.x0 < w - 90 && a.y1 - a.y0 < h - 90) break; }
+      a = caja_(z); ox = (a.x0 + a.x1) / 2 - w / 2; oy = (a.y0 + a.y1) / 2 - h / 2;
+    } else { z = vista.z; const c = mundo(vista.lat, vista.lng, z); ox = c.x - w / 2; oy = c.y - h / 2; }
+    const n = 2 ** z, vistas = new Set();
     for(let ty = Math.max(0, Math.floor(oy / T)); ty <= Math.min(n - 1, Math.floor((oy + h) / T)); ty++)
       for(let tx = Math.floor(ox / T); tx <= Math.floor((ox + w) / T); tx++){
         const k = `${z}/${(tx % n + n) % n}/${ty}`; vistas.add(k);

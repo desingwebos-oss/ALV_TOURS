@@ -63,7 +63,8 @@ function trackerBuses(){
   const estados = new Map(), lista = h('ul', {class:'live-lista'}, ...cfg.buses.map(b => {
     const st = h('small', {}, 'Aún no sale'); estados.set(b.id, st);
     return h('li', {}, h('button', {class:'live-fila', type:'button', onclick:() => enVivo(b)}, h('b', {}, b.nombre), st)); }));
-  mapa.el.hidden = true;
+  const vista = {lat:19.0626, lng:-98.2848, z:13};      // sin buses en ruta: mapa base centrado en el destino
+  setTimeout(() => mapa.pintarTodos([], meta, vista), 0);
   async function leer(){
     if(document.hidden) return;
     let ps; try { ps = await api.getPosAll(cfg.buses.map(b => b.id)); } catch { nota.textContent = 'No se pudo consultar la ubicación. Reintentando…'; return; }
@@ -76,7 +77,7 @@ function trackerBuses(){
       if(coordOk(meta.lat, meta.lng)) t.push('~' + distanciaKm(p, meta).toFixed(1) + ' km al destino');
       st.textContent = t.join(' · '); pts.push({lat:p.lat, lng:p.lng, etq:num(b), activo:p.activo});
     }
-    mapa.el.hidden = !pts.length; if(pts.length) mapa.pintarTodos(pts, meta);
+    mapa.pintarTodos(pts, meta, vista);
     nota.textContent = pts.length ? 'Toca un autobús para ver su mapa.' : 'Los autobuses compartirán su ubicación cuando salgan.';
   }
   clearInterval(liveTimer); liveTimer = setInterval(leer, 15000); leer();
