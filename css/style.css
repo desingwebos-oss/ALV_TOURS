@@ -180,3 +180,7 @@ dialog.menu-lateral[open]{animation:menu-entra .22s ease-out}
 .pin-bus{font:900 15px system-ui}.pin-viejo{opacity:.55;filter:grayscale(1)}
 .admin-link{display:inline-block;margin-top:14px;font:700 12px system-ui;color:var(--tinta);opacity:.75;text-decoration:underline}
 .admin-link:hover,.admin-link:focus-visible{opacity:1}
+
+.live-fila{display:block;background:#fff8e6;border:3px solid var(--tinta);border-radius:14px;padding:8px 12px;box-shadow:3px 3px 0 var(--tinta)}
+.live-fila .acciones{margin-top:6px}
+.tag.bus-tag{background:var(--azul);color:var(--tinta)}

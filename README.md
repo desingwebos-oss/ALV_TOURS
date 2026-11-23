@@ -58,3 +58,18 @@ La sesión dura 4 h y la KEY se valida solo en el servidor (5 intentos fallidos 
 ## Pendiente (siguiente entrega)
 PWA (manifest, sw.js, iconos, offline), deploy.yml, vista admin con datos enmascarados, cifrado de teléfono/domicilio
 con pgcrypto, rate limiting en endpoints distintos de validate-key y limpieza de sesiones/intentos viejos.
+
+
+## Ubicación en segundo plano (Traccar Client)
+Una página web no puede enviar el GPS con el celular bloqueado o con otra app al frente. Para eso cada bus usa la app gratuita **Traccar Client** (Android/iPhone):
+1. Supabase > SQL Editor: ejecuta `supabase/agregar_tracker_segundo_plano.sql`. Te muestra un *identificador* por bus (`bus3.xxxxxxxx…`). Guárdalo en privado.
+2. Redespliega: `supabase functions deploy api --no-verify-jwt`
+3. En el celular de cada bus, en Traccar Client: **Identificador del dispositivo** = el de ese bus; **URL del servidor** = `https://TU-PROYECTO.supabase.co/functions/v1/api/track`; **Frecuencia** = 30 s; ubicación en **"Permitir siempre"**, precisión alta, y sin ahorro de batería para la app. Activa el servicio.
+4. Para dejar de compartir, apaga el servicio en la app. A los 2 min sin señal el bus se ve en gris.
+
+
+## Tracker oculto
+El tracker de ubicación está apagado: `"tracker": false` en `config/festival.json`. Con `true` reaparece la opción en el menú ☰ y la sección de ubicación del panel admin.
+
+## Avisos por autobús
+En el panel `#/admin`, al publicar un aviso puedes elegir el autobús que lo emite (o "Aviso general"). La tarjeta muestra el nombre del bus. Ejecuta antes `supabase/agregar_bus_a_avisos.sql` y redespliega la función.

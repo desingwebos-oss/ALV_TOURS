@@ -18,6 +18,8 @@ function modal(...contenido){
 }
 
 /* ---------- PANTALLA 1: bienvenida ---------- */
+const busDe = n => cfg.buses.find(b => b.id === (n.bus_id || n.bus));
+const busChip = n => busDe(n) ? h('span', {class:'tag bus-tag'}, busDe(n).nombre) : null;
 const etqClase = t => 't' + ([...String(t || '')].reduce((n, c) => n + c.charCodeAt(0), 0) % 4);   // color de etiqueta (clase CSS)
 const fechaOk = f => /^\d{4}-\d{2}-\d{2}$/.test(f || '');
 const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -25,16 +27,16 @@ let carTimer;
 const titulo = t => h('div', {class:'titulo-sec'}, h('h2', {}, t), h('span', {class:'greca'}));
 
 function detalle(n){
-  modal(h('span', {class:'tag ' + etqClase(n.etiqueta)}, n.etiqueta || 'AVISO'), h('h3', {}, n.titulo),
+  modal(h('span', {class:'tag ' + etqClase(n.etiqueta)}, n.etiqueta || 'AVISO'), busChip(n), h('h3', {}, n.titulo),
     n.imagen ? h('img', {src:n.imagen, alt:'', class:'foto'}) : null, h('p', {}, n.texto_largo || n.texto),
     /^https:\/\//.test(n.enlace || '') ? h('a', {class:'btn naranja', href:n.enlace, target:'_blank', rel:'noopener noreferrer'}, n.enlace_texto || 'VER MÁS') : null);
 }
 const tarjeta = n => h('article', {class:'noticia bus-card' + (n.fijada ? ' fijada' : ''), tabindex:'0', onclick:() => detalle(n), onkeydown:e => { if(e.key === 'Enter') detalle(n); }},
-  h('div', {class:'meta'}, h('span', {class:'tag ' + etqClase(n.etiqueta)}, n.etiqueta || 'AVISO'), fechaOk(n.fecha) ? h('time', {}, fmt(n.fecha)) : null),
+  h('div', {class:'meta'}, h('span', {class:'tag ' + etqClase(n.etiqueta)}, n.etiqueta || 'AVISO'), busChip(n), fechaOk(n.fecha) ? h('time', {}, fmt(n.fecha)) : null),
   h('h3', {}, n.titulo), n.imagen ? h('img', {src:n.imagen, alt:''}) : null, h('p', {}, n.texto));
 
 function ticker(news){                       // cinta de novedades (solo CSS, texto plano)
-  const items = news.slice(0, 5).map(n => (n.etiqueta ? n.etiqueta + ': ' : '') + n.titulo);
+  const items = news.slice(0, 5).map(n => (busDe(n) ? busDe(n).nombre + ' · ' : '') + (n.etiqueta ? n.etiqueta + ': ' : '') + n.titulo);
   if(!items.length) return null;
   const txt = (items.join('  ✺  ') + '  ✺  ').repeat(3);
   return h('section', {class:'ticker', 'aria-label':'Novedades'}, h('b', {}, 'NOVEDADES'),
@@ -57,12 +59,13 @@ function carrusel(nombres){                  // carrusel con scroll-snap; se det
 /* ---------- Tracker de TODOS los buses (portada, dentro de AVISOS DEL VIAJE) ---------- */
 let liveTimer;
 const hace = seg => seg < 60 ? seg + ' s' : seg < 3600 ? Math.round(seg / 60) + ' min' : Math.round(seg / 3600) + ' h';
-function trackerBuses(){
+function trackerBuses(){                    // ventana "Ubicación de los buses" (se abre desde el menú de las 3 rayas)
   const mapa = crearMapa(), meta = cfg.festival.destino || {}, nota = h('p', {class:'live-estado'}, 'Buscando autobuses…');
   const num = b => (b.id.match(/\d+/) || [b.id])[0];
   const estados = new Map(), lista = h('ul', {class:'live-lista'}, ...cfg.buses.map(b => {
-    const st = h('small', {}, 'Aún no sale'); estados.set(b.id, st);
-    return h('li', {}, h('button', {class:'live-fila', type:'button', onclick:() => enVivo(b)}, h('b', {}, b.nombre), st)); }));
+    const st = h('small', {}, 'Aún sin ubicación'); estados.set(b.id, st);
+    return h('li', {class:'live-fila'}, h('b', {}, b.nombre), st,
+      h('div', {class:'acciones'}, h('button', {class:'btn', type:'button', onclick:() => enVivo(b)}, 'MAPA'))); }));
   const vista = {lat:19.0626, lng:-98.2848, z:13};      // sin buses en ruta: mapa base centrado en el destino
   setTimeout(() => mapa.pintarTodos([], meta, vista), 0);
   async function leer(){
@@ -71,17 +74,18 @@ function trackerBuses(){
     const pts = [];
     for(const b of cfg.buses){
       const p = ps[b.id], st = estados.get(b.id);
-      if(!p || !p.tiene || !coordOk(p.lat, p.lng)){ st.textContent = 'Aún no sale'; continue; }
+      if(!p || !p.tiene || !coordOk(p.lat, p.lng)) continue;
       const t = [(p.activo ? '🟢 En ruta' : '⚪ Sin señal') + ' · hace ' + hace(p.edad)];
       if(p.activo && Number.isFinite(p.speed)) t.push(Math.round(p.speed * 3.6) + ' km/h');
       if(coordOk(meta.lat, meta.lng)) t.push('~' + distanciaKm(p, meta).toFixed(1) + ' km al destino');
       st.textContent = t.join(' · '); pts.push({lat:p.lat, lng:p.lng, etq:num(b), activo:p.activo});
     }
     mapa.pintarTodos(pts, meta, vista);
-    nota.textContent = pts.length ? 'Toca un autobús para ver su mapa.' : 'Los autobuses compartirán su ubicación cuando salgan.';
+    nota.textContent = pts.length ? 'Posición del último reporte; si el pin está gris, no hay señal reciente.' : 'Aún no hay buses reportando en el mapa.';
   }
   clearInterval(liveTimer); liveTimer = setInterval(leer, 15000); leer();
-  return h('div', {class:'bus-card tracker-home'}, h('h3', {}, '📍 BUSES EN VIVO'), mapa.el, nota, lista);
+  const d = modal(h('div', {class:'tracker-home'}, h('h3', {}, '📍 UBICACIÓN DE LOS BUSES'), mapa.el, nota, lista));
+  d.addEventListener('close', () => clearInterval(liveTimer));
 }
 
 const pieza = (clase, src) => h('img', {class:'pz ' + clase, src, alt:'', loading:'lazy'});
@@ -104,8 +108,7 @@ function inicio(){
   // lista desplegable del cartel: justo debajo de NOVEDADES
   const desplegable = destacados.length || cartel.length ? h('details', {class:'cartel'}, h('summary', {class:'btn'}, 'VER CARTEL COMPLETO'),
     h('ul', {class:'cartel-lista'}, ...[...destacados, ...cartel].map(n => h('li', {}, n)))) : null;
-  const avisos = cfg.news.length || cfg.buses.length ? h('section', {class:'avisos'}, titulo('AVISOS DEL VIAJE'),
-    cfg.buses.length ? trackerBuses() : null, cfg.news.length ? h('div', {class:'muro'}, ...cfg.news.map(tarjeta)) : null) : null;
+  const avisos = cfg.news.length ? h('section', {class:'avisos'}, titulo('AVISOS DEL VIAJE'), h('div', {class:'muro'}, ...cfg.news.map(tarjeta))) : null;
   const lineup = destacados.length ? h('section', {class:'lineup'}, titulo('LINEUP'), carrusel(destacados)) : null;
   $app.replaceChildren(...[ticker(cfg.news), desplegable, hero, avisos, lineup].filter(Boolean));
 }
@@ -120,6 +123,9 @@ function menuLateral(){
       h('ul', {class:'menu-lista'}, ...cfg.buses.map(b => h('li', {},
         h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); modalBus(b); }},
           h('b', {}, b.nombre), h('small', {}, contarAsientos(b.layout) + ' asientos'))))),
+      ...(cfg.festival.tracker === true ? [h('p', {class:'menu-sub'}, 'Seguimiento'),
+        h('ul', {class:'menu-lista'}, h('li', {}, h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); trackerBuses(); }},
+          h('b', {}, '📍 Ubicación de los buses'), h('small', {}, 'Ver info'))))] : []),
       h('a', {class:'menu-inicio', href:'#/', onclick:() => d.close()}, '← Ir al inicio')));
   d.addEventListener('click', e => { if(e.target === d) d.close(); });            // tocar fuera cierra
   d.addEventListener('close', () => btn.setAttribute('aria-expanded', 'false'));
@@ -235,7 +241,7 @@ const ETIQUETAS = ['AVISO', 'ITINERARIO', 'URGENTE', 'ABORDAJE', 'LINEUP', 'CLIM
 function admin(){
   let token = null;
   const box = h('div', {class:'bus-card'}), trk = h('div', {class:'bus-card'});
-  $app.replaceChildren(h('a', {href:'#/'}, '← Ver sitio'), h('h2', {}, 'PANEL ADMIN'), box, trk);
+  $app.replaceChildren(...[h('a', {href:'#/'}, '← Ver sitio'), h('h2', {}, 'PANEL ADMIN'), box, cfg.festival.tracker === true ? trk : null].filter(Boolean));
   pasoKey();
   function pasoKey(m = ''){
     const inp = h('input', {type:'password', class:'campo', placeholder:'KEY de administrador', maxlength:'64', autocomplete:'current-password'}), msg = h('p', {class:'msg'}, m);
@@ -267,7 +273,7 @@ function admin(){
     });
     pintarBtn(); est.textContent = gps ? '🟢 Transmitiendo…' : 'Sin transmitir.';
     trk.replaceChildren(h('h3', {}, '📍 UBICACIÓN DEL BUS'),
-      h('p', {}, 'Elige el bus que va en este celular y toca iniciar. Mantén esta pantalla abierta y el celular con datos y GPS durante el viaje.'), sel, est, btn);
+      h('p', {}, 'Elige el bus que va en este celular y toca iniciar. Esta opción solo transmite con la página abierta y la pantalla encendida; para segundo plano usa la app Traccar Client (ver README).'), sel, est, btn);
   }
   const fallo = (e, msg) => e.status === 401 ? pasoKey('Sesión expirada, escribe la KEY otra vez.') : (msg.textContent = e.message);
   async function panel(){
@@ -276,7 +282,7 @@ function admin(){
     let datos = []; try { datos = await api.adminNews(token); } catch(e) { return fallo(e, msg); }
     if(!datos.length) lista.append(h('p', {}, 'Aún no hay avisos. Crea el primero.'));
     datos.forEach(n => lista.append(h('article', {class:'adm-item' + (n.activo ? '' : ' oculto')},
-      h('div', {class:'meta'}, h('span', {class:'tag ' + etqClase(n.etiqueta)}, n.etiqueta), fechaOk(n.fecha) ? h('time', {}, fmt(n.fecha)) : null),
+      h('div', {class:'meta'}, h('span', {class:'tag ' + etqClase(n.etiqueta)}, n.etiqueta), busChip(n), fechaOk(n.fecha) ? h('time', {}, fmt(n.fecha)) : null),
       h('h3', {}, (n.fijada ? '📌 ' : '') + n.titulo), h('p', {}, n.texto),
       h('div', {class:'acciones'},
         h('button', {class:'btn', onclick:() => formulario(n)}, 'EDITAR'),
@@ -290,22 +296,23 @@ function admin(){
     const hoy = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
     const f = {
       etiqueta:h('input', {class:'campo', list:'etiquetas', maxlength:'20', placeholder:'Etiqueta (ej. ITINERARIO)', value:n.etiqueta || 'AVISO'}),
+      bus:h('select', {class:'campo', 'aria-label':'Autobús que publica el aviso'}, h('option', {value:''}, 'Aviso general (todos los buses)'), ...cfg.buses.map(b => h('option', {value:b.id}, b.nombre))),
       titulo:h('input', {class:'campo', maxlength:'80', placeholder:'Título', value:n.titulo || ''}),
       texto:h('textarea', {class:'campo area', maxlength:'200', rows:'2', placeholder:'Resumen corto (se ve en la tarjeta)'}),
       largo:h('textarea', {class:'campo area', maxlength:'1500', rows:'6', placeholder:'Detalle completo (se ve al tocar la tarjeta)'}),
       fecha:h('input', {class:'campo', type:'date', value:fechaOk(n.fecha) ? n.fecha : hoy}),
       enlace:h('input', {class:'campo', type:'url', maxlength:'300', placeholder:'Enlace https:// (opcional)', value:n.enlace || ''}),
       fijada:h('input', {type:'checkbox'}), activo:h('input', {type:'checkbox'})};
-    f.texto.value = n.texto || ''; f.largo.value = n.texto_largo || ''; f.fijada.checked = !!n.fijada; f.activo.checked = n.activo !== false;
+    f.bus.value = n.bus_id || ''; f.texto.value = n.texto || ''; f.largo.value = n.texto_largo || ''; f.fijada.checked = !!n.fijada; f.activo.checked = n.activo !== false;
     const msg = h('p', {class:'msg'});
     box.replaceChildren(h('h3', {}, n.id ? 'EDITAR AVISO' : 'NUEVO AVISO'),
       h('datalist', {id:'etiquetas'}, ...ETIQUETAS.map(e => h('option', {value:e}))),
-      f.etiqueta, f.titulo, f.texto, f.largo, f.fecha, f.enlace,
+      f.etiqueta, f.bus, f.titulo, f.texto, f.largo, f.fecha, f.enlace,
       h('label', {}, f.fijada, ' Fijar arriba'), h('br'), h('label', {}, f.activo, ' Visible en el sitio'), msg,
       h('div', {class:'acciones'},
         h('button', {class:'btn negro', onclick:async () => {
           if(!f.titulo.value.trim()) return msg.textContent = 'Escribe un título';
-          try { await api.adminSave({id:n.id, etiqueta:f.etiqueta.value, titulo:f.titulo.value, texto:f.texto.value, texto_largo:f.largo.value,
+          try { await api.adminSave({id:n.id, etiqueta:f.etiqueta.value, bus_id:f.bus.value, titulo:f.titulo.value, texto:f.texto.value, texto_largo:f.largo.value,
             fecha:f.fecha.value, enlace:f.enlace.value, enlace_texto:n.enlace_texto || '', fijada:f.fijada.checked, activo:f.activo.checked}, token); panel(); }
           catch(e) { fallo(e, msg); } }}, '📣 PUBLICAR'),
         h('button', {class:'btn', onclick:panel}, 'CANCELAR')));

@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
 
     // ---------- AVISOS (público: solo lectura de los activos) ----------
     if (req.method === "GET" && path === "/news") {
-      const { data } = await db.from("news").select("id,titulo,etiqueta,fecha,fijada,texto,texto_largo,enlace,enlace_texto")
+      const { data } = await db.from("news").select("id,titulo,etiqueta,fecha,fijada,bus_id,texto,texto_largo,enlace,enlace_texto")
         .eq("activo", true).order("fecha", { ascending: false }).limit(12);
       return out(data || []);
     }
@@ -70,6 +70,28 @@ Deno.serve(async (req) => {
         return { bus_id: x.bus_id, tiene: true, activo: edad <= 120, edad, lat: x.lat, lng: x.lng, speed: x.speed, heading: x.heading }; }));
     }
 
+    // ---------- TRACKER EN SEGUNDO PLANO: app Traccar Client (OsmAnd o JSON). Sin sesión; el "id" es "busN.SECRETO" ----------
+    if ((req.method === "POST" || req.method === "GET") && path === "/track") {
+      const f = (k: string) => { const v = q.get(k); return v === null || v === "" ? NaN : Number(v); };
+      let id = q.get("id") || q.get("deviceid") || "", lat = f("lat"), lng = f("lon"), vel = f("speed") * 0.514444 /* nudos → m/s */, rumbo = f("bearing"), prec = f("accuracy");
+      if (req.method === "POST" && (req.headers.get("content-type") || "").includes("json")) {   // formato JSON de las versiones nuevas
+        const j = await req.json().catch(() => ({})), c = j?.location?.coords || {};
+        id = String(j?.device_id || id);
+        if (c.latitude != null) lat = Number(c.latitude); if (c.longitude != null) lng = Number(c.longitude);
+        if (c.speed != null) vel = Number(c.speed); if (c.heading != null) rumbo = Number(c.heading); if (c.accuracy != null) prec = Number(c.accuracy);
+      }
+      const i = id.indexOf("."), bus = id.slice(0, i), secreto = id.slice(i + 1);
+      if (i < 1 || !busOk(bus) || secreto.length < 16 || secreto.length > 64) return out({ error: "No autorizado" }, 401);
+      const { data: k } = await db.from("track_keys").select("key_hash").eq("bus_id", bus).maybeSingle();
+      if (!k || k.key_hash !== await sha(secreto)) return out({ error: "No autorizado" }, 401);
+      const rg = (v: number, a: number, z: number) => Number.isFinite(v) && v >= a && v <= z ? v : null;
+      const la = rg(lat, -90, 90), ln = rg(lng, -180, 180);
+      if (la === null || ln === null) return out({ error: "Datos inválidos" }, 400);
+      const { error } = await db.from("bus_pos").upsert({ bus_id: bus, lat: la, lng: ln, speed: rg(vel, 0, 100), heading: rg(rumbo, 0, 360),
+        acc: rg(prec, 0, 100000), updated_at: new Date().toISOString() });
+      return error ? out({ error: "No se pudo guardar" }, 400) : out({ ok: true });
+    }
+
     // ---------- ADMIN (requiere sesión de la KEY "admin") ----------
     if (path.startsWith("/admin/")) {
       if (!(await sesion(req, "admin"))) return out({ error: "Sesión inválida" }, 401);
@@ -83,7 +105,7 @@ Deno.serve(async (req) => {
         const fila = {
           titulo: t(b.titulo, 80), etiqueta: t(b.etiqueta, 20).toUpperCase() || "AVISO",
           fecha: /^\d{4}-\d{2}-\d{2}$/.test(b.fecha || "") ? b.fecha : new Date().toISOString().slice(0, 10),
-          fijada: b.fijada === true, activo: b.activo !== false,
+          fijada: b.fijada === true, activo: b.activo !== false, bus_id: busOk(b.bus_id) ? b.bus_id : null,
           texto: t(b.texto, 200), texto_largo: t(b.texto_largo, 1500),
           enlace: /^https:\/\//.test(t(b.enlace, 300)) ? t(b.enlace, 300) : "", enlace_texto: t(b.enlace_texto, 30),
         };
