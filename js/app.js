@@ -261,7 +261,7 @@ function admin(){
       const c = pos.coords;
       api.adminPos({bus_id:gps.bus, lat:c.latitude, lng:c.longitude, speed:c.speed ?? null, heading:c.heading ?? null, acc:c.accuracy}, token)
         .then(() => { if(gps) est.textContent = `🟢 Transmitiendo · último envío ${hora()} · precisión ±${Math.round(c.accuracy)} m`; })
-        .catch(e => { if(e.status === 401){ detenerGps(); pintarBtn(); est.textContent = 'La sesión expiró. Entra de nuevo con la KEY y reinicia.'; } else est.textContent = '⚠️ Sin internet, reintentando…'; });
+        .catch(e => { if(e.status === 401){ detenerGps(); pintarBtn(); est.textContent = 'La sesión expiró. Entra de nuevo con la KEY y reinicia.'; } else est.textContent = e.status ? '⚠️ El servidor rechazó la ubicación (' + e.message + '). ¿Ejecutaste agregar_tracker.sql y desplegaste la función?' : '⚠️ Sin internet, reintentando…'; });
     }
     btn.addEventListener('click', () => {
       if(gps){ detenerGps(); pintarBtn(); est.textContent = 'Transmisión detenida.'; return; }

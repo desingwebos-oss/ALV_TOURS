@@ -3,7 +3,7 @@
   "fecha": "2026-11-28",
   "ciudad": "Foro Cholula",
   "destino": {"nombre": "Foro Cholula", "lat": 19.06258370286491, "lng": -98.28484173304004},
-  "tracker": false,
+  "tracker": true,
   "banner": "img/banner.webp",
   "poster": "",
   "colores": {
