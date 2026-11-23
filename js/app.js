@@ -1,4 +1,4 @@
-// App: portada (hero + muro + barra de buses) y flujo de reserva por autobús.
+// App: portada (hero + muro) con menú lateral de buses y flujo de reserva por autobús.
 // Todo se arma con textContent (nunca innerHTML) para evitar XSS.
 import { loadConfig } from './config-loader.js';
 import * as api from './api.js';
@@ -75,8 +75,25 @@ function inicio(){
     h('ul', {class:'cartel-lista'}, ...[...destacados, ...cartel].map(n => h('li', {}, n)))) : null;
   const avisos = cfg.news.length ? h('section', {class:'avisos'}, titulo('AVISOS DEL VIAJE'), h('div', {class:'muro'}, ...cfg.news.map(tarjeta))) : null;
   const lineup = destacados.length ? h('section', {class:'lineup'}, titulo('LINEUP'), carrusel(destacados)) : null;
-  const barra = h('nav', {class:'barra', 'aria-label':'Autobuses'}, ...cfg.buses.map(b => h('button', {class:'btn', title:b.nombre, onclick:() => modalBus(b)}, b.nombre.split(' - ')[0])));
-  $app.replaceChildren(...[ticker(cfg.news), desplegable, hero, avisos, lineup, barra].filter(Boolean));
+  $app.replaceChildren(...[ticker(cfg.news), desplegable, hero, avisos, lineup].filter(Boolean));
+}
+/* ---------- Menú lateral (3 rayitas): seleccionar asiento por autobús ---------- */
+function menuLateral(){
+  const btn = document.getElementById('menuBtn'); if(!btn) return;
+  const d = h('dialog', {class:'menu-lateral', 'aria-label':'Seleccionar asientos'},
+    h('div', {class:'menu-panel'},
+      h('div', {class:'menu-cab'}, h('h2', {}, 'SELECCIONAR ASIENTOS'),
+        h('button', {class:'cerrar', type:'button', 'aria-label':'Cerrar menú', onclick:() => d.close()}, '✕')),
+      h('p', {class:'menu-sub'}, 'Elige tu autobús'),
+      h('ul', {class:'menu-lista'}, ...cfg.buses.map(b => h('li', {},
+        h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); modalBus(b); }},
+          h('b', {}, b.nombre.split(' - ')[0]), h('small', {}, contarAsientos(b.layout) + ' asientos · $' + b.precio + ' MXN'))))),
+      h('a', {class:'menu-inicio', href:'#/', onclick:() => d.close()}, '← Ir al inicio')));
+  d.addEventListener('click', e => { if(e.target === d) d.close(); });            // tocar fuera cierra
+  d.addEventListener('close', () => btn.setAttribute('aria-expanded', 'false'));
+  btn.setAttribute('aria-expanded', 'false');
+  btn.addEventListener('click', () => { d.showModal(); btn.setAttribute('aria-expanded', 'true'); });
+  document.body.append(d);
 }
 async function modalBus(b){
   const cap = contarAsientos(b.layout), cupo = h('p', {}, `Asientos: ${cap} • consultando disponibilidad…`);
@@ -114,7 +131,7 @@ function reserva(id){
     async function pintar(){
       let s = {taken:[], held:[], mine:[]}; try { s = await api.getSeats(b.id, st.token); } catch(e) { return fallo(e); }
       const mine = new Set(s.mine); st.sel = new Set([...st.sel].filter(n => mine.has(n)));
-      renderMapa(mapa, b.layout, {taken:s.taken, held:s.held.filter(n => !mine.has(n)), selected:st.sel, onToggle:alternar});
+      renderMapa(mapa, b.layout, {taken:s.taken, held:s.held.filter(n => !mine.has(n)), selected:st.sel, onToggle:alternar, frente:b.frente, tvFrente:b.tv_frente});
       lista.textContent = `${st.sel.size} SELECCIONADOS` + (st.sel.size ? ': ' + [...st.sel].sort((a, c) => a - c).join(', ') + ' (apartados 10 min)' : '');
     }
     async function alternar(n){
@@ -207,6 +224,6 @@ function route(){ clearInterval(tick); clearInterval(carTimer); const m = locati
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; document.getElementById('btnInstalar')?.removeAttribute('hidden'); });
 (async () => {
   try { cfg = await loadConfig(); api.setBase(cfg.festival.api_base); document.title = cfg.festival.nombre;
-    document.getElementById('marca').textContent = cfg.festival.nombre; addEventListener('hashchange', route); route(); }
+    document.getElementById('marca').textContent = cfg.festival.nombre; menuLateral(); addEventListener('hashchange', route); route(); }
   catch { $app.textContent = 'No se pudo cargar la configuración del festival.'; }
 })();

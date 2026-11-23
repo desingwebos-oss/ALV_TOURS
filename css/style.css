@@ -2,7 +2,7 @@
    Los colores se sobreescriben desde festival.json (config-loader.js). Sin estilos en línea (CSP). */
 :root{--naranja:#F7931E;--azul:#2FB6D5;--crema:#FFF5DF;--amarillo:#FFC83D;--rosa:#F0508C;--verde:#58B368;--tinta:#2A1A10;--papel:#FFFBF0}
 *{box-sizing:border-box}
-body{margin:0;color:var(--tinta);font:700 15px/1.45 system-ui,sans-serif;padding-bottom:84px;background-color:var(--crema);
+body{margin:0;color:var(--tinta);font:700 15px/1.45 system-ui,sans-serif;padding-bottom:24px;background-color:var(--crema);
   background-image:radial-gradient(rgba(42,26,16,.09) 1.4px,transparent 1.7px);background-size:22px 22px}
 .marca,h1,h2,h3{font-family:'Shrikhand',Georgia,serif;font-weight:400;letter-spacing:.3px;line-height:1.1}
 h1{font-size:40px;color:var(--naranja);text-shadow:3px 3px 0 var(--tinta);margin:.2em 0}
@@ -86,9 +86,6 @@ main{max-width:1100px;margin:auto;padding:44px 16px 16px}
 .btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--tinta)}
 .btn.negro{background:var(--tinta);color:var(--amarillo)}.btn.naranja{background:var(--naranja);color:var(--tinta)}.btn[hidden]{display:none}
 .campo{width:100%;margin:6px 0;padding:13px 18px;border:3px solid var(--tinta);border-radius:99px;font:900 14px system-ui;background:#fff;color:var(--tinta)}
-.barra{position:fixed;bottom:0;left:0;right:0;z-index:6;background:var(--papel);border-top:4px solid var(--tinta);padding:10px;display:flex;gap:8px;overflow-x:auto}
-.barra .btn{flex:1;white-space:nowrap;padding:11px 6px;min-width:0}
-@media(max-width:420px){.barra{gap:5px;padding:10px 6px}.barra .btn{font-size:12px;padding:11px 2px}}
 dialog.modal{max-width:520px;width:92%;margin:auto;color:var(--tinta)}dialog::backdrop{background:rgba(42,26,16,.7)}
 .cerrar{float:right;border:3px solid var(--tinta);border-radius:50%;background:#fff;width:34px;height:34px;cursor:pointer}
 .msg{color:#b00020;min-height:1.2em}
@@ -101,14 +98,56 @@ dialog.modal{max-width:520px;width:92%;margin:auto;color:var(--tinta)}dialog::ba
 .adm-item h3{font-size:18px}
 .adm-item .acciones .btn{padding:8px 12px;font-size:12px}
 
-/* mapa de asientos */
-.mapa{background:#FFF1C9;border:4px solid var(--tinta);border-radius:36px;padding:12px;max-width:390px;margin:12px auto}
+/* mapa de asientos (croquis digitalizado) */
+.mapa{background:#FFF1C9;border:4px solid var(--tinta);border-radius:36px;padding:14px 12px 16px;max-width:390px;margin:12px auto}
 .fila{display:flex;justify-content:center;gap:8px;margin:6px 0}
-.tv-mark{width:22px;height:14px;background:var(--tinta);clip-path:polygon(15% 0,85% 0,100% 100%,0 100%);margin:6px auto}
-.seat{width:44px;height:44px;border:3px solid var(--tinta);border-radius:10px;font-weight:900;color:var(--tinta);cursor:pointer;transition:all .15s ease}
+.fila-bus{display:flex;justify-content:center;align-items:center;margin:8px 0}
+.fila-bus.con-tv{margin-top:20px}
+.lado{position:relative;display:flex;gap:8px;width:96px;min-height:44px;justify-content:flex-start}
+.pasillo{width:38px;flex:none}
+.fila-bus.completa{width:260px;margin-inline:auto;justify-content:space-between;gap:0}
+.fila-bus.completa.alin-izq{width:226px;justify-content:flex-start;gap:8px}
+.lado.tv::before,.tv-mark{content:"";position:absolute;left:50%;top:-14px;transform:translateX(-50%);width:34px;height:11px;background:var(--tinta);clip-path:polygon(15% 0,85% 0,100% 100%,0 100%)}
+.tv-mark{position:static;transform:none;margin:6px auto}
+.tv-frente{width:58px;margin:4px auto 8px;background:var(--tinta);color:var(--amarillo);border-radius:8px;text-align:center;font:900 12px/20px system-ui;letter-spacing:1px}
+.frente{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 10px;padding-bottom:10px;border-bottom:3px dashed var(--tinta)}
+.frente .relleno{flex:1}
+.chofer{display:flex;align-items:center;gap:6px;font:900 11px system-ui;letter-spacing:.5px}
+.volante{width:26px;height:26px;border:3px solid var(--tinta);border-radius:50%;position:relative;background:#fff}
+.volante::after{content:"";position:absolute;left:3px;right:3px;top:9px;height:3px;background:var(--tinta)}
+.puerta{border:3px dashed var(--tinta);border-radius:10px;padding:3px 10px;font:900 11px system-ui;letter-spacing:.5px;background:#fff}
+.hueco{width:44px;height:44px}
+.esp{width:44px;height:44px;display:grid;place-items:center;background:var(--papel);border:3px solid var(--tinta);border-radius:10px;font:900 11px system-ui;letter-spacing:.3px}
+.esp.x2{width:96px}
+.esp:is([aria-label="ESCALERAS"]){background:repeating-linear-gradient(90deg,var(--papel) 0 6px,#e4d3a8 6px 9px);font-size:10px}
+.seat{width:44px;height:44px;border:3px solid var(--tinta);border-radius:10px;font-weight:900;color:var(--tinta);cursor:pointer;transition:all .15s ease;padding:0}
 .seat:hover{transform:translateY(-2px) scale(1.08)}
 .seat.free{background:var(--azul)}
 .seat.selected{background:var(--naranja);box-shadow:4px 4px 0 var(--tinta);transform:scale(1.08)}
 .seat.occupied{background:var(--tinta);color:#8a7a6e;cursor:not-allowed;text-decoration:line-through}
 
-@media(prefers-reduced-motion:reduce){.ticker-pista{animation:none}.btn,.noticia,.seat{transition:none}}
+/* botón de 3 rayitas (arriba a la izquierda, junto a la marca) */
+.menu-btn{flex:none;width:44px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;
+  background:var(--naranja);border:3px solid var(--tinta);border-radius:12px;box-shadow:3px 3px 0 #000;padding:0;transition:transform .12s,box-shadow .12s}
+.menu-btn span{display:block;width:22px;height:3.5px;background:var(--tinta);border-radius:3px}
+.menu-btn:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 #000}
+.menu-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+/* ventana lateral de opciones */
+dialog.menu-lateral{margin:0;padding:0;height:100dvh;max-height:none;width:min(86vw,340px);border:0;border-right:4px solid var(--tinta);
+  background:var(--papel);color:var(--tinta);box-shadow:8px 0 0 var(--tinta);overflow-y:auto}
+dialog.menu-lateral[open]{animation:menu-entra .22s ease-out}
+@keyframes menu-entra{from{transform:translateX(-100%)}}
+.menu-panel{padding:18px 16px 28px}
+.menu-cab{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.menu-cab h2{font-size:20px;margin:0;color:var(--naranja);text-shadow:2px 2px 0 var(--tinta)}
+.menu-cab .cerrar{float:none;flex:none}
+.menu-sub{margin:10px 0 6px}
+.menu-lista{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.menu-item{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;cursor:pointer;color:var(--tinta);
+  background:var(--azul);border:3px solid var(--tinta);border-radius:99px;padding:11px 18px;box-shadow:4px 4px 0 var(--tinta);font:900 15px system-ui;transition:transform .12s,box-shadow .12s}
+.menu-item small{font:700 11px system-ui}
+.menu-item:hover{transform:translate(-1px,-1px);box-shadow:6px 6px 0 var(--tinta)}
+.menu-item:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--tinta)}
+.menu-inicio{display:inline-block;margin-top:18px}
+
+@media(prefers-reduced-motion:reduce){.ticker-pista{animation:none}.btn,.noticia,.seat,.menu-btn,.menu-item{transition:none}dialog.menu-lateral[open]{animation:none}}

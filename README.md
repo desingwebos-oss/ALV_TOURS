@@ -6,7 +6,16 @@ GitHub Pages solo sirve archivos estáticos: todo lo que ve el navegador es púb
 los asientos y los datos personales viven en Supabase Postgres con RLS, accesibles solo por la Edge Function.
 
 ## Cambiar de festival (5 min)
-Edita `config/festival.json`, `config/buses.json` (1–6 buses; `activo:false` los oculta; cada bus necesita su KEY en `bus_keys`) y `config/news.json`. No se toca código.
+Edita `config/festival.json`, `config/buses.json` (1–7 buses; `activo:false` los oculta; cada bus necesita su KEY en `bus_keys`) y `config/news.json`. No se toca código.
+
+## Croquis de los autobuses (mapa de asientos)
+Cada bus de `config/buses.json` trae su croquis digitalizado en `layout` (filas `izq` / `der` con pasillo, `fila` para el fondo, `tvIzq`/`tvDer` para las pantallas)
+y opcionalmente `frente` (chofer/puerta) y `tv_frente`. Dentro de `izq`/`der`: número = asiento, `null` = hueco, `"WC"` = zona especial, `{"t":"WC","span":2}` = zona de 2 columnas.
+Buses 1, 3, 6 y 7 tienen su croquis; los buses 2, 4 y 5 usan el del Bus 1 con `"layout_de":"bus1"` (quita esa línea y pon su propio `layout` cuando los digitalices).
+Bus 7: ejecuta `supabase/agregar_bus7.sql` para crear su KEY.
+
+## Menú lateral
+El botón de 3 rayitas (arriba a la izquierda, junto al nombre del festival) abre la ventana "Seleccionar asientos" con la lista de buses.
 
 ## Panel de administrador (publicar desde el celular)
 1. En Supabase > SQL Editor ejecuta `supabase/actualizar_admin.sql` (crea la tabla `news`). Antes de correrlo, descomenta y cambia la frase de la KEY admin

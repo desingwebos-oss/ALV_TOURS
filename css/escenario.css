@@ -21,7 +21,7 @@
 .nav-top a{color:var(--crema);text-decoration:none;font:900 12px/1 system-ui;letter-spacing:1px;text-transform:uppercase;padding:6px 2px;border-bottom:3px solid transparent}
 .nav-top a:hover,.nav-top a:focus-visible{border-bottom-color:var(--naranja);outline:none}
 @media(max-width:560px){.solo-pc{display:none}.nav-top{gap:12px}.top .marca{font-size:16px}}
-@media(max-width:400px){.nav-top a[href$="/lineup"]{display:none}}
+@media(max-width:400px){.nav-top a[href$="/lineup"]{display:none}.top{gap:8px;padding:10px 12px}.nav-top{gap:8px}}
 
 /* los textos sobre el escenario se leen bien */
 main{position:relative}
