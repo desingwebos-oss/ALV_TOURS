@@ -87,7 +87,7 @@ function menuLateral(){
       h('p', {class:'menu-sub'}, 'Elige tu autobús'),
       h('ul', {class:'menu-lista'}, ...cfg.buses.map(b => h('li', {},
         h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); modalBus(b); }},
-          h('b', {}, b.nombre.split(' - ')[0]), h('small', {}, contarAsientos(b.layout) + ' asientos · $' + b.precio + ' MXN'))))),
+          h('b', {}, b.nombre.split(' - ')[0]), h('small', {}, contarAsientos(b.layout) + ' asientos'))))),
       h('a', {class:'menu-inicio', href:'#/', onclick:() => d.close()}, '← Ir al inicio')));
   d.addEventListener('click', e => { if(e.target === d) d.close(); });            // tocar fuera cierra
   d.addEventListener('close', () => btn.setAttribute('aria-expanded', 'false'));
@@ -98,7 +98,8 @@ function menuLateral(){
 async function modalBus(b){
   const cap = contarAsientos(b.layout), cupo = h('p', {}, `Asientos: ${cap} • consultando disponibilidad…`);
   const d = modal(h('h3', {}, b.nombre), b.foto ? h('img', {src:b.foto, alt:b.nombre, class:'foto'}) : null,
-    h('p', {}, 'CHOFER: ' + b.chofer), h('p', {}, 'Precio: $' + b.precio + ' MXN'), h('p', {}, 'Ruta: ' + b.puntos_abordaje.join(' → ')), cupo,
+    h('p', {}, 'CHOFER: ' + b.chofer), h('p', {class:'itin-tit'}, 'PUNTOS DE ABORDAJE'),
+    h('ul', {class:'itin'}, ...(b.itinerario || []).map(x => h('li', {}, h('b', {}, x.punto), h('span', {}, 'Cita: ' + x.cita), h('span', {}, 'Salida: ' + x.salida)))), cupo,
     h('a', {class:'btn naranja', href:'#/bus/' + b.id, onclick:() => d.close()}, 'IR A RESERVAR'));
   try { const s = await api.getSeats(b.id), oc = s.taken.length + s.held.length; cupo.textContent = `Libres: ${cap - oc} • Ocupados: ${oc}`; }
   catch { cupo.textContent = `Asientos: ${cap}`; }
@@ -121,7 +122,7 @@ function reserva(id){
         catch(e) { msg.textContent = e.message; } }}, 'VALIDAR'));
   }
   function pasoReserva(){                   // Pasos 2-4
-    const sel = h('select', {class:'campo'}, h('option', {value:'', disabled:'', selected:'', hidden:''}, 'Punto de abordaje'), ...b.puntos_abordaje.map(p => h('option', {value:p}, p)));
+    const sel = h('select', {class:'campo'}, h('option', {value:'', disabled:'', selected:'', hidden:''}, 'Punto de abordaje'), ...(b.itinerario || b.puntos_abordaje.map(p => ({punto:p}))).map(x => h('option', {value:x.punto}, x.cita ? `${x.punto} · cita ${x.cita}` : x.punto)));
     const mapa = h('div', {class:'mapa'}), lista = h('p', {}, ''), msg = h('p', {class:'msg'});
     const nombre = h('input', {class:'campo', placeholder:'Nombre completo', maxlength:'80', autocomplete:'name'});
     const tel = h('input', {class:'campo', placeholder:'WhatsApp / teléfono (10 dígitos)', inputmode:'numeric', maxlength:'14', autocomplete:'tel'});

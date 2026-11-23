@@ -14,6 +14,9 @@ y opcionalmente `frente` (chofer/puerta) y `tv_frente`. Dentro de `izq`/`der`: n
 Buses 1, 3, 6 y 7 tienen su croquis; los buses 2, 4 y 5 usan el del Bus 1 con `"layout_de":"bus1"` (quita esa línea y pon su propio `layout` cuando los digitalices).
 Bus 7: ejecuta `supabase/agregar_bus7.sql` para crear su KEY.
 
+## Itinerario por bus
+Cada bus tiene `itinerario`: lista de `{punto, cita, salida}`. Se muestra en la ventana del bus (en lugar del precio) y como opciones de abordaje al reservar; `puntos_abordaje` solo repite los nombres.
+
 ## Menú lateral
 El botón de 3 rayitas (arriba a la izquierda, junto al nombre del festival) abre la ventana "Seleccionar asientos" con la lista de buses.
 

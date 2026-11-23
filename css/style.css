@@ -98,6 +98,13 @@ dialog.modal{max-width:520px;width:92%;margin:auto;color:var(--tinta)}dialog::ba
 .adm-item h3{font-size:18px}
 .adm-item .acciones .btn{padding:8px 12px;font-size:12px}
 
+/* itinerario del bus */
+.itin-tit{margin:.8em 0 .3em;font-size:12px;letter-spacing:1px}
+.itin{list-style:none;margin:0 0 .6em;padding:0;display:grid;gap:8px}
+.itin li{display:flex;flex-wrap:wrap;gap:2px 12px;background:#fff;border:3px solid var(--tinta);border-radius:18px;padding:8px 14px}
+.itin li b{flex:1 0 100%}
+.itin li span{font-size:13px}
+
 /* mapa de asientos (croquis digitalizado) */
 .mapa{background:#FFF1C9;border:4px solid var(--tinta);border-radius:36px;padding:14px 12px 16px;max-width:390px;margin:12px auto}
 .fila{display:flex;justify-content:center;gap:8px;margin:6px 0}
