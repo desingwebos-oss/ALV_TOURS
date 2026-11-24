@@ -1,7 +1,7 @@
 [
   {
     "id": "bus1",
-    "nombre": "Jose Madero BUS 1",
+    "nombre": "BUS 1",
     "foto": "img/bus1.webp",
     "activo": true,
     "puntos_abordaje": ["Reloj Ford", "Perinorte", "Metro Revolución"],
@@ -28,7 +28,7 @@
   },
   {
     "id": "bus2",
-    "nombre": "Babasonico BUS 2",
+    "nombre": "BUS 2",
     "foto": "img/bus2.webp",
     "activo": true,
     "puntos_abordaje": ["Metro Deportivo 18 de Marzo", "Metro Agrícola Oriental"],
@@ -56,7 +56,7 @@
   },
   {
     "id": "bus3",
-    "nombre": "Mars Volta BUS 3",
+    "nombre": "BUS 3",
     "foto": "img/bus3.webp",
     "activo": true,
     "puntos_abordaje": ["Metro Revolución", "Metro Agrícola Oriental"],
@@ -84,7 +84,7 @@
   },
   {
     "id": "bus4",
-    "nombre": "Caloncho BUS 4",
+    "nombre": "BUS 4",
     "foto": "img/bus4.webp",
     "activo": true,
     "puntos_abordaje": ["Estadio Azteca", "Metro General Anaya", "Metro Tepalcates"],
@@ -97,7 +97,7 @@
   },
   {
     "id": "bus5",
-    "nombre": "Enjambre BUS 5",
+    "nombre": "BUS 5",
     "foto": "img/bus5.webp",
     "activo": true,
     "puntos_abordaje": ["Metro Agrícola Oriental", "Metro Tepalcates", "Metro Peñón Viejo"],
@@ -125,7 +125,7 @@
   },
   {
     "id": "bus6",
-    "nombre": "Caifan BUS 6",
+    "nombre": "BUS 6",
     "foto": "img/bus6.webp",
     "activo": true,
     "puntos_abordaje": ["FESC C4"],
@@ -151,7 +151,7 @@
   },
   {
     "id": "bus7",
-    "nombre": "Caligari BUS 7",
+    "nombre": "BUS 7",
     "foto": "img/bus7.webp",
     "activo": true,
     "puntos_abordaje": ["Reloj Ford", "Perinorte", "La Bandera Tultitlán"],
