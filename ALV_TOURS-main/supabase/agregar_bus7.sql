@@ -1,0 +1,4 @@
+-- Ejecutar UNA vez en Supabase > SQL Editor para habilitar el Bus 7.
+-- Cambia la frase por una KEY propia y borra este comando del historial del editor después:
+-- insert into bus_keys values ('bus7', crypt('PULSO-BUS7-2026', gen_salt('bf', 10)));
+-- (No hace falta tocar tablas ni la Edge Function: aceptan cualquier bus_id.)

@@ -1,0 +1,42 @@
+/* Capa visual "escenario" (solo presentación). No toca style.css ni la lógica.
+   La imagen del escenario es img/escenario.jpg (puedes reemplazarla por una foto real con el mismo nombre). */
+.escenario{position:absolute;top:0;left:0;right:0;height:640px;z-index:-1;pointer-events:none;
+  background:
+    linear-gradient(180deg,rgba(14,40,80,.35) 0%,rgba(14,40,80,.15) 55%,rgba(255,245,223,0) 100%),
+    url(../img/escenario.jpg) center 30%/cover no-repeat,
+    radial-gradient(ellipse 28% 55% at 18% 0,rgba(255,200,61,.65),transparent 70%),
+    radial-gradient(ellipse 28% 55% at 50% 0,rgba(47,182,213,.6),transparent 70%),
+    radial-gradient(ellipse 28% 55% at 82% 0,rgba(240,80,140,.6),transparent 70%),
+    linear-gradient(180deg,#0B2A52 0%,#1A5E9E 70%,#2B7DB8 100%);
+  -webkit-mask-image:linear-gradient(#000 62%,transparent);mask-image:linear-gradient(#000 62%,transparent)}
+.escenario::after{content:"";position:absolute;left:0;right:0;bottom:22%;height:90px;opacity:.55;
+  background:repeating-linear-gradient(90deg,rgba(11,20,40,.9) 0 6px,transparent 6px 22px);
+  -webkit-mask-image:linear-gradient(transparent,#000);mask-image:linear-gradient(transparent,#000)}
+
+/* barra superior más oscura y con enlaces */
+.top{background:rgba(42,26,16,.94);border-bottom-color:var(--amarillo);gap:12px}
+.top .marca{color:var(--naranja);text-shadow:2px 2px 0 #000}
+.top .pill{background:var(--amarillo);color:var(--tinta)}
+.nav-top{display:flex;gap:16px;margin-left:auto}
+.nav-top a{color:var(--crema);text-decoration:none;font:900 12px/1 system-ui;letter-spacing:1px;text-transform:uppercase;padding:6px 2px;border-bottom:3px solid transparent}
+.nav-top a:hover,.nav-top a:focus-visible{border-bottom-color:var(--naranja);outline:none}
+@media(max-width:560px){.solo-pc{display:none}.nav-top{gap:12px}.top .marca{font-size:16px}}
+@media(max-width:400px){.nav-top a[href$="/lineup"]{display:none}.top{gap:8px;padding:10px 12px}.nav-top{gap:8px}}
+
+/* los textos sobre el escenario se leen bien */
+main{position:relative}
+
+/* pie de página: solo logo + redes de ALV Tours */
+.pie{background:transparent;color:var(--tinta);margin-top:28px;padding:18px 16px 36px;text-align:center}
+.pie-redes{display:flex;justify-content:center;gap:16px;margin-top:6px}
+.pie-redes .red{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;color:#fff;border:3px solid var(--tinta);box-shadow:3px 3px 0 var(--tinta);transition:transform .12s}
+.pie-redes .red:hover,.pie-redes .red:focus-visible{transform:translateY(-3px) rotate(-4deg);outline:none}
+.pie-redes .red svg{width:26px;height:26px;fill:currentColor}
+.red-ig{background:radial-gradient(circle at 30% 107%,#fdf497 0,#fdf497 5%,#fd5949 45%,#d6249f 60%,#285AEB 90%)}
+.red-fb{background:#1877F2}
+.red-wa{background:#25D366}
+
+/* logo de la marca */
+.logo-alv{height:48px;width:auto;display:block;filter:drop-shadow(2px 2px 0 rgba(0,0,0,.45))}
+.logo-pie{height:84px;width:auto;display:block;margin:0 auto 12px}
+@media(max-width:560px){.logo-alv{height:40px}}

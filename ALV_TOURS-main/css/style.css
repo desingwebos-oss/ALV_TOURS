@@ -1,0 +1,189 @@
+/* ALV Tours · look festival de pueblo (jipioso / tribal) en tonos claros.
+   Los colores se sobreescriben desde festival.json (config-loader.js). Sin estilos en línea (CSP). */
+:root{--naranja:#F7931E;--azul:#2FB6D5;--crema:#FFF5DF;--amarillo:#FFC83D;--rosa:#F0508C;--verde:#58B368;--tinta:#2A1A10;--papel:#FFFBF0}
+*{box-sizing:border-box}
+body{margin:0;color:var(--tinta);font:700 15px/1.45 system-ui,sans-serif;padding-bottom:24px;background-color:var(--crema);
+  background-image:radial-gradient(rgba(42,26,16,.09) 1.4px,transparent 1.7px);background-size:22px 22px}
+.marca,h1,h2,h3{font-family:'Shrikhand',Georgia,serif;font-weight:400;letter-spacing:.3px;line-height:1.1}
+h1{font-size:40px;color:var(--naranja);text-shadow:3px 3px 0 var(--tinta);margin:.2em 0}
+h2{font-size:26px;margin:.3em 0}h3{font-size:22px;margin:.3em 0}
+p{white-space:pre-line;margin:.5em 0}
+a{color:var(--tinta)}
+:focus-visible{outline:3px solid var(--rosa);outline-offset:3px}
+
+/* barra superior + papel picado colgando */
+.top{position:sticky;top:0;z-index:5;background:var(--papel);border-bottom:4px solid var(--tinta);padding:10px 16px;display:flex;justify-content:space-between;align-items:center}
+.top::after{content:"";position:absolute;left:0;right:0;top:100%;height:32px;pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='32' viewBox='0 0 120 32'%3E%3Cg stroke='%232A1A10' stroke-width='1.6' stroke-linejoin='round'%3E%3Cpath d='M3 1H27V22L15 30L3 22Z' fill='%23F7931E'/%3E%3Cpath d='M33 1H57V22L45 30L33 22Z' fill='%232FB6D5'/%3E%3Cpath d='M63 1H87V22L75 30L63 22Z' fill='%23F0508C'/%3E%3Cpath d='M93 1H117V22L105 30L93 22Z' fill='%23FFC83D'/%3E%3C/g%3E%3Cg fill='%23FFF5DF'%3E%3Ccircle cx='15' cy='12' r='4'/%3E%3Ccircle cx='45' cy='12' r='4'/%3E%3Ccircle cx='75' cy='12' r='4'/%3E%3Ccircle cx='105' cy='12' r='4'/%3E%3C/g%3E%3C/svg%3E") repeat-x 0 0/120px 32px}
+.marca{font-size:20px;color:var(--naranja);text-shadow:2px 2px 0 var(--tinta)}
+.pill{background:var(--tinta);color:var(--amarillo);border-radius:99px;padding:5px 14px;font-size:11px;letter-spacing:1px}
+main{max-width:1100px;margin:auto;padding:44px 16px 16px}
+
+/* tarjetas "recortadas a mano" */
+.bus-card{background:var(--papel);border:4px solid var(--tinta);border-radius:28px 38px 30px 42px/36px 30px 40px 28px;box-shadow:8px 8px 0 var(--tinta);padding:18px;margin:0 0 22px}
+.hero{display:grid;gap:14px;margin:8px 0;align-items:center}
+@media(min-width:760px){.hero{grid-template-columns:minmax(300px,420px) 1fr;gap:28px}}
+/* banner tipo collage: piezas recortadas, giradas y encimadas (compacto, no ocupa la pantalla) */
+.collage{position:relative;margin:0;height:240px;max-width:420px;width:100%;justify-self:center}
+.pz{position:absolute;display:block;border:3px solid var(--tinta);border-radius:14px;background:#1C7FC2;box-shadow:4px 4px 0 rgba(42,26,16,.85)}
+.pz-titulo{width:76%;left:12%;top:62px;transform:rotate(-2deg);z-index:2}
+.pz-sol{width:29%;left:0;top:0;transform:rotate(-7deg);z-index:3}
+.pz-luna{width:27%;right:0;top:4px;transform:rotate(6deg);z-index:3}
+.pz-volcan{width:31%;left:1%;bottom:0;transform:rotate(4deg);z-index:3}
+.pz-disco{width:28%;right:2%;bottom:4px;transform:rotate(-5deg);z-index:3}
+.cinta-washi{position:absolute;left:8%;top:68px;width:54px;height:18px;background:rgba(255,200,61,.85);border:2px solid var(--tinta);transform:rotate(-35deg);z-index:4}
+@media(max-width:420px){.collage{height:230px}}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.chip{background:var(--amarillo);border:3px solid var(--tinta);border-radius:99px;padding:3px 14px;font-size:13px}
+.acciones{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+
+/* títulos de sección con greca */
+.titulo-sec{display:flex;align-items:center;gap:12px;margin:30px 0 14px}
+.titulo-sec h2{margin:0;color:var(--naranja);text-shadow:2px 2px 0 var(--tinta);font-size:26px;white-space:nowrap}
+.greca{flex:1;height:16px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='16' viewBox='0 0 28 16'%3E%3Cpath d='M0 13L7 3L14 13L21 3L28 13' fill='none' stroke='%232A1A10' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E") repeat-x center/28px 16px}
+
+/* cinta de novedades */
+.ticker{display:flex;align-items:stretch;background:var(--naranja);border:4px solid var(--tinta);border-radius:99px;overflow:hidden;margin:0 0 22px;box-shadow:5px 5px 0 var(--tinta)}
+.ticker b{flex:none;background:var(--tinta);color:var(--amarillo);padding:8px 14px;font-size:12px;letter-spacing:1px;display:flex;align-items:center}
+.ticker-vp{flex:1;overflow:hidden;display:flex;align-items:center}
+.ticker-pista{display:flex;white-space:nowrap;font-size:14px;animation:cinta 40s linear infinite}
+.ticker-pista span{padding-right:2em}
+@keyframes cinta{to{transform:translateX(-50%)}}
+
+/* avisos */
+.muro{display:grid;gap:14px}
+@media(min-width:800px){.muro{grid-template-columns:1fr 1fr}.muro .fijada{grid-column:1/-1}}
+.noticia{cursor:pointer;margin:0;transition:transform .15s}
+.noticia:hover{transform:translate(-2px,-2px)}
+.noticia.fijada{background:#FFF0C2}
+.noticia img,.foto{width:100%;border-radius:20px;border:3px solid var(--tinta);margin-top:8px}
+.meta{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.meta time{font-size:12px}
+.tag{border:3px solid var(--tinta);border-radius:99px;padding:2px 12px;font-size:11px;display:inline-block;letter-spacing:.5px;background:var(--azul)}
+.t0{background:var(--azul)}.t1{background:var(--rosa)}.t2{background:var(--verde)}.t3{background:var(--amarillo)}
+
+/* carrusel del lineup */
+.car{position:relative}
+.car-pista{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 8px 20px;scrollbar-width:none}
+.car-pista::-webkit-scrollbar{display:none}
+.slide{position:relative;overflow:hidden;flex:0 0 min(52%,190px);height:110px;scroll-snap-align:start;display:flex;align-items:flex-end;padding:10px 12px;
+  border:3px solid var(--tinta);border-radius:22px 28px 24px 30px/26px 22px 28px 22px;box-shadow:4px 4px 0 var(--tinta)}
+.slide h3{position:relative;z-index:1;margin:0;font-size:17px}
+.slide::before{content:"";position:absolute;right:-24px;top:-24px;width:96px;height:96px;border-radius:50%;opacity:.28;
+  background:repeating-conic-gradient(var(--tinta) 0 7deg,transparent 7deg 18deg);-webkit-mask:radial-gradient(circle,transparent 36%,#000 38%);mask:radial-gradient(circle,transparent 36%,#000 38%)}
+.slide::after{content:"";position:absolute;right:8px;top:8px;width:40px;height:40px;border-radius:50%;border:3px solid var(--tinta);opacity:.35}
+.c0{background:var(--naranja)}.c1{background:var(--azul)}.c2{background:var(--rosa)}.c3{background:var(--amarillo)}.c4{background:var(--verde)}
+.car-btn{position:absolute;top:50%;transform:translateY(-60%);z-index:2;width:36px;height:36px;border-radius:50%;border:3px solid var(--tinta);background:var(--papel);font:900 20px/1 system-ui;cursor:pointer;box-shadow:3px 3px 0 var(--tinta)}
+.car-btn.izq{left:-6px}.car-btn.der{right:-6px}
+.cartel{margin:0 0 18px}
+.cartel summary{list-style:none;cursor:pointer;display:inline-block}
+.cartel summary::-webkit-details-marker{display:none}
+.cartel-lista{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.cartel-lista li{background:var(--papel);border:3px solid var(--tinta);border-radius:99px;padding:3px 14px;font-size:13px}
+
+/* botones y campos */
+.btn{display:inline-block;text-align:center;text-decoration:none;cursor:pointer;color:var(--tinta);background:var(--azul);border:3px solid var(--tinta);border-radius:99px;padding:11px 18px;font:900 13px system-ui;box-shadow:4px 4px 0 var(--tinta);transition:transform .12s,box-shadow .12s}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:6px 6px 0 var(--tinta)}
+.btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--tinta)}
+.btn.negro{background:var(--tinta);color:var(--amarillo)}.btn.naranja{background:var(--naranja);color:var(--tinta)}.btn[hidden]{display:none}
+.campo{width:100%;margin:6px 0;padding:13px 18px;border:3px solid var(--tinta);border-radius:99px;font:900 14px system-ui;background:#fff;color:var(--tinta)}
+dialog.modal{max-width:520px;width:92%;margin:auto;color:var(--tinta)}dialog::backdrop{background:rgba(42,26,16,.7)}
+.cerrar{float:right;border:3px solid var(--tinta);border-radius:50%;background:#fff;width:34px;height:34px;cursor:pointer}
+.msg{color:#b00020;min-height:1.2em}
+
+/* panel admin */
+.area{border-radius:22px;resize:vertical;font-family:system-ui}
+.adm-lista{display:grid;gap:12px;margin-top:12px}
+.adm-item{background:#fff;border:3px solid var(--tinta);border-radius:22px;padding:12px 14px}
+.adm-item.oculto{opacity:.55}
+.adm-item h3{font-size:18px}
+.adm-item .acciones .btn{padding:8px 12px;font-size:12px}
+
+/* tracker en vivo */
+.mapa-vivo{position:relative;height:260px;overflow:hidden;border:3px solid var(--tinta);border-radius:22px;background:#dfe9f1;margin:10px 0;touch-action:none}
+.mapa-vivo[hidden]{display:none}
+.mapa-tiles{position:absolute;inset:0;pointer-events:none}
+.mapa-tiles img{position:absolute;left:0;top:0;width:256px;height:256px;max-width:none;margin:0;border:0;border-radius:0}
+.pin{position:absolute;left:0;top:0;width:36px;height:36px;margin:-18px 0 0 -18px;display:grid;place-items:center;font-size:19px;border:3px solid var(--tinta);border-radius:50%;box-shadow:2px 2px 0 var(--tinta);z-index:2}
+.pin[hidden]{display:none}
+.pin-bus{background:var(--naranja);z-index:3}.pin-foto{width:46px;height:46px;margin:-23px 0 0 -23px;overflow:hidden;background:var(--crema)}.pin-foto img{width:100%;height:100%;object-fit:cover;display:block}.pin-meta{background:var(--rosa)}
+.mapa-attr{position:absolute;right:4px;bottom:3px;z-index:4;font:700 10px system-ui;background:rgba(255,251,240,.85);padding:1px 6px;border-radius:6px}
+.live-estado{font-weight:900;margin:.4em 0}.live-datos{margin:.2em 0 .6em}
+
+/* itinerario del bus */
+.itin-tit{margin:.8em 0 .3em;font-size:12px;letter-spacing:1px}
+.itin{list-style:none;margin:0 0 .6em;padding:0;display:grid;gap:8px}
+.itin li{display:flex;flex-wrap:wrap;gap:2px 12px;background:#fff;border:3px solid var(--tinta);border-radius:18px;padding:8px 14px}
+.itin li b{flex:1 0 100%}
+.itin li span{font-size:13px}
+
+/* mapa de asientos (croquis digitalizado) */
+.mapa{background:#FFF1C9;border:4px solid var(--tinta);border-radius:36px;padding:14px 12px 16px;max-width:390px;margin:12px auto}
+.fila{display:flex;justify-content:center;gap:8px;margin:6px 0}
+.fila-bus{display:flex;justify-content:center;align-items:center;margin:8px 0}
+.fila-bus.con-tv{margin-top:20px}
+.lado{position:relative;display:flex;gap:8px;width:96px;min-height:44px;justify-content:flex-start}
+.pasillo{width:38px;flex:none}
+.fila-bus.completa{width:260px;margin-inline:auto;justify-content:space-between;gap:0}
+.fila-bus.completa.alin-izq{width:226px;justify-content:flex-start;gap:8px}
+.lado.tv::before,.tv-mark{content:"";position:absolute;left:50%;top:-14px;transform:translateX(-50%);width:34px;height:11px;background:var(--tinta);clip-path:polygon(15% 0,85% 0,100% 100%,0 100%)}
+.tv-mark{position:static;transform:none;margin:6px auto}
+.tv-frente{width:58px;margin:4px auto 8px;background:var(--tinta);color:var(--amarillo);border-radius:8px;text-align:center;font:900 12px/20px system-ui;letter-spacing:1px}
+.frente{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 10px;padding-bottom:10px;border-bottom:3px dashed var(--tinta)}
+.frente .relleno{flex:1}
+.chofer{display:flex;align-items:center;gap:6px;font:900 11px system-ui;letter-spacing:.5px}
+.volante{width:26px;height:26px;border:3px solid var(--tinta);border-radius:50%;position:relative;background:#fff}
+.volante::after{content:"";position:absolute;left:3px;right:3px;top:9px;height:3px;background:var(--tinta)}
+.puerta{border:3px dashed var(--tinta);border-radius:10px;padding:3px 10px;font:900 11px system-ui;letter-spacing:.5px;background:#fff}
+.hueco{width:44px;height:44px}
+.esp{width:44px;height:44px;display:grid;place-items:center;background:var(--papel);border:3px solid var(--tinta);border-radius:10px;font:900 11px system-ui;letter-spacing:.3px}
+.esp.x2{width:96px}
+.esp:is([aria-label="ESCALERAS"]){background:repeating-linear-gradient(90deg,var(--papel) 0 6px,#e4d3a8 6px 9px);font-size:10px}
+.seat{width:44px;height:44px;border:3px solid var(--tinta);border-radius:10px;font-weight:900;color:var(--tinta);cursor:pointer;transition:all .15s ease;padding:0}
+.seat:hover{transform:translateY(-2px) scale(1.08)}
+.seat.free{background:var(--azul)}
+.seat.selected{background:var(--naranja);box-shadow:4px 4px 0 var(--tinta);transform:scale(1.08)}
+.seat.occupied{background:var(--tinta);color:#8a7a6e;cursor:not-allowed;text-decoration:line-through}
+
+/* botón de 3 rayitas (arriba a la izquierda, junto a la marca) */
+.menu-btn{flex:none;width:44px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;
+  background:var(--naranja);border:3px solid var(--tinta);border-radius:12px;box-shadow:3px 3px 0 #000;padding:0;transition:transform .12s,box-shadow .12s}
+.menu-btn span{display:block;width:22px;height:3.5px;background:var(--tinta);border-radius:3px}
+.menu-btn:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 #000}
+.menu-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+/* ventana lateral de opciones */
+dialog.menu-lateral{margin:0;padding:0;height:100dvh;max-height:none;width:min(86vw,340px);border:0;border-right:4px solid var(--tinta);
+  background:var(--papel);color:var(--tinta);box-shadow:8px 0 0 var(--tinta);overflow-y:auto}
+dialog.menu-lateral[open]{animation:menu-entra .22s ease-out}
+@keyframes menu-entra{from{transform:translateX(-100%)}}
+.menu-panel{padding:18px 16px 28px}
+.menu-cab{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.menu-cab h2{font-size:20px;margin:0;color:var(--naranja);text-shadow:2px 2px 0 var(--tinta)}
+.menu-cab .cerrar{float:none;flex:none}
+.menu-sub{margin:10px 0 6px}
+.menu-lista{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.menu-item{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;cursor:pointer;color:var(--tinta);
+  background:var(--azul);border:3px solid var(--tinta);border-radius:99px;padding:11px 18px;box-shadow:4px 4px 0 var(--tinta);font:900 15px system-ui;transition:transform .12s,box-shadow .12s}
+.menu-item small{font:700 11px system-ui}
+.menu-item:hover{transform:translate(-1px,-1px);box-shadow:6px 6px 0 var(--tinta)}
+.menu-item:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--tinta)}
+.menu-inicio{display:inline-block;margin-top:18px}
+
+@media(prefers-reduced-motion:reduce){.ticker-pista{animation:none}.btn,.noticia,.seat,.menu-btn,.menu-item{transition:none}dialog.menu-lateral[open]{animation:none}}
+
+/* Tracker de todos los buses en la portada */
+.tracker-home{margin-bottom:14px}.tracker-home h3{margin-top:0}
+.live-lista{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+@media(min-width:800px){.live-lista{grid-template-columns:1fr 1fr}}
+.live-fila{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;cursor:pointer;color:var(--tinta);background:#fff8e6;border:3px solid var(--tinta);border-radius:14px;padding:8px 12px;box-shadow:3px 3px 0 var(--tinta);font:inherit}
+.live-fila small{font:700 12px system-ui}
+.live-fila:hover,.live-fila:focus-visible{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--tinta);outline:none}
+.pin-bus{font:900 15px system-ui}.pin-viejo{opacity:.55;filter:grayscale(1)}
+.admin-link{display:inline-block;margin-top:14px;font:700 12px system-ui;color:var(--tinta);opacity:.75;text-decoration:underline}
+.admin-link:hover,.admin-link:focus-visible{opacity:1}
+
+.live-fila{display:block;background:#fff8e6;border:3px solid var(--tinta);border-radius:14px;padding:8px 12px;box-shadow:3px 3px 0 var(--tinta)}
+.live-fila .acciones{margin-top:6px}
+.tag.bus-tag{background:var(--azul);color:var(--tinta)}
+.cartel-lista a{color:inherit;text-decoration:none;font-weight:700}
+.cartel-lista li:has(a){cursor:pointer;transition:transform .12s}.cartel-lista li:has(a):hover{transform:translateY(-2px) rotate(-1deg)}
+.cartel-lista a:hover,.cartel-lista a:focus-visible{text-decoration:underline;outline:none}

@@ -1,0 +1,17 @@
+{
+  "id": "./",
+  "name": "ALV Tours · Autobuses a Tecate Comuna",
+  "short_name": "ALV Tours",
+  "description": "Aparta tu lugar en el autobús a Tecate Comuna 2026 · Foro Cholula, Puebla.",
+  "lang": "es-MX",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFC83D",
+  "theme_color": "#2A1A10",
+  "icons": [
+    {"src": "img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
