@@ -78,7 +78,7 @@ function trackerBuses(){                    // ventana "Ubicación de los buses"
       const t = [(p.activo ? '🟢 En ruta' : '⚪ Sin señal') + ' · hace ' + hace(p.edad)];
       if(p.activo && Number.isFinite(p.speed)) t.push(Math.round(p.speed * 3.6) + ' km/h');
       if(coordOk(meta.lat, meta.lng)) t.push('~' + distanciaKm(p, meta).toFixed(1) + ' km al destino');
-      st.textContent = t.join(' · '); pts.push({lat:p.lat, lng:p.lng, etq:num(b), activo:p.activo});
+      st.textContent = t.join(' · '); pts.push({lat:p.lat, lng:p.lng, etq:num(b), activo:p.activo, foto:b.foto});
     }
     mapa.pintarTodos(pts, meta, vista);
     nota.textContent = pts.length ? 'Posición del último reporte; si el pin está gris, no hay señal reciente.' : 'Aún no hay buses reportando en el mapa.';
@@ -157,7 +157,7 @@ function enVivo(b){
     try {
       const p = await api.getPos(b.id);
       if(!p.tiene){ mapa.el.hidden = true; enlace.hidden = true; datos.textContent = ''; estado.textContent = 'Este autobús aún no comparte su ubicación. Vuelve a revisar cuando salga.'; return; }
-      mapa.el.hidden = false; mapa.pintar(p, meta);
+      mapa.el.hidden = false; mapa.pintar(p, meta, b.foto);
       estado.textContent = (p.activo ? '🟢 En ruta · actualizado hace ' : '⚪ Sin señal reciente · última posición hace ') + hace(p.edad);
       const partes = [];
       if(p.activo && Number.isFinite(p.speed)) partes.push(Math.round(p.speed * 3.6) + ' km/h');

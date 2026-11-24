@@ -105,7 +105,7 @@ dialog.modal{max-width:520px;width:92%;margin:auto;color:var(--tinta)}dialog::ba
 .mapa-tiles img{position:absolute;left:0;top:0;width:256px;height:256px;max-width:none;margin:0;border:0;border-radius:0}
 .pin{position:absolute;left:0;top:0;width:36px;height:36px;margin:-18px 0 0 -18px;display:grid;place-items:center;font-size:19px;border:3px solid var(--tinta);border-radius:50%;box-shadow:2px 2px 0 var(--tinta);z-index:2}
 .pin[hidden]{display:none}
-.pin-bus{background:var(--naranja);z-index:3}.pin-meta{background:var(--rosa)}
+.pin-bus{background:var(--naranja);z-index:3}.pin-foto{width:46px;height:46px;margin:-23px 0 0 -23px;overflow:hidden;background:var(--crema)}.pin-foto img{width:100%;height:100%;object-fit:cover;display:block}.pin-meta{background:var(--rosa)}
 .mapa-attr{position:absolute;right:4px;bottom:3px;z-index:4;font:700 10px system-ui;background:rgba(255,251,240,.85);padding:1px 6px;border-radius:6px}
 .live-estado{font-weight:900;margin:.4em 0}.live-datos{margin:.2em 0 .6em}
 

@@ -37,7 +37,12 @@ export function crearMapa(){
     const ids = new Set();
     for(const p of pts){
       const k = String(p.etq); ids.add(k);
-      let pin = pines.get(k); if(!pin){ pin = el('div', 'pin pin-bus', k); caja.append(pin); pines.set(k, pin); }
+      let pin = pines.get(k);
+      if(!pin){ pin = el('div', 'pin pin-bus', k); caja.append(pin); pines.set(k, pin);
+        if(p.foto && /^img\/[\w.-]+$/.test(p.foto)){            // foto del bus en lugar del número (si no carga, queda el número)
+          const im = el('img'); im.alt = ''; im.draggable = false; im.src = p.foto;
+          im.addEventListener('load', () => { pin.textContent = ''; pin.classList.add('pin-foto'); pin.append(im); });
+        } }
       pin.classList.toggle('pin-viejo', p.activo === false);
       const q = mundo(p.lat, p.lng, z); pin.style.transform = `translate(${q.x - ox}px,${q.y - oy}px)`;
     }
@@ -45,6 +50,6 @@ export function crearMapa(){
     pinMeta.hidden = !hayMeta;
     if(hayMeta){ const q = mundo(meta.lat, meta.lng, z); pinMeta.style.transform = `translate(${q.x - ox}px,${q.y - oy}px)`; }
   }
-  const pintar = (bus, meta) => pintarTodos([{lat:bus.lat, lng:bus.lng, etq:'🚌'}], meta);   // un solo bus (ventana EN VIVO)
+  const pintar = (bus, meta, foto) => pintarTodos([{lat:bus.lat, lng:bus.lng, etq:'🚌', foto}], meta);   // un solo bus (ventana EN VIVO)
   return {el:caja, pintar, pintarTodos};
 }
