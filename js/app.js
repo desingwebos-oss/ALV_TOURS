@@ -200,7 +200,7 @@ function reserva(id){
     const mapa = h('div', {class:'mapa'}), lista = h('p', {}, ''), msg = h('p', {class:'msg'});
     const nombre = h('input', {class:'campo', placeholder:'Nombre completo', maxlength:'80', autocomplete:'name'});
     const tel = h('input', {class:'campo', placeholder:'WhatsApp / teléfono (10 dígitos)', inputmode:'numeric', maxlength:'14', autocomplete:'tel'});
-    const dom = h('input', {class:'campo', placeholder:'Domicilio o punto de referencia', maxlength:'120'});
+    const dom = h('input', {class:'campo', placeholder:'Punto de referencia', maxlength:'120'});
     const chk = h('input', {type:'checkbox'});
     const fallo = e => { if(e.status === 401) pasoKey('Tu sesión expiró, valida la KEY de nuevo.'); else msg.textContent = e.message; };
     async function pintar(){
