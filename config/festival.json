@@ -17,7 +17,7 @@
     "papel": "#FFFBF0"
   },
   "bienvenida": "Viaja directo al festival. Aparta tu lugar con la KEY de tu autobús.",
-  "aviso_privacidad": "Usaremos tu nombre, teléfono y domicilio solo para la logística del viaje (Comuna con ALV). No se comparten con terceros. Puedes pedir su eliminación por WhatsApp.\n\nLa ubicación de los baños (WC) en el autobús puede modificarse según la disponibilidad del autobús.",
+  "aviso_privacidad": "Usaremos tu nombre, teléfono y punto de abordaje solo para la logística del viaje (Comuna con ALV). No se comparten con terceros. Puedes pedir su eliminación por WhatsApp.\n\nLa ubicación de los baños (WC) en el autobús puede modificarse según la disponibilidad del autobús.",
   "whatsapp_soporte": "5533150564",
   "api_base": "https://jhiqiqkjvfftfqgoodcz.supabase.co/functions/v1/api",
   "lineup_instagram": {
