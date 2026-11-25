@@ -17,7 +17,7 @@ const busOk = (v: unknown) => typeof v === "string" && /^[\w-]{1,32}$/.test(v);
 async function sesion(req: Request, bus: string) {
   const t = (req.headers.get("authorization") || "").replace("Bearer ", "");
   if (!t) return null;
-  const { data } = await db.from("sessions").select("id,bus_id,expires_at").eq("token_hash", await sha(t)).maybeSingle();
+  const { data } = await db.from("sessions").select("id,bus_id,expires_at,phone").eq("token_hash", await sha(t)).maybeSingle();
   return data && data.bus_id === bus && new Date(data.expires_at) > new Date() ? data : null;
 }
 
@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
   const q = new URL(req.url).searchParams;
   try {
     if (req.method === "POST" && path === "/validate-key") {
-      const { bus_id, key } = await req.json();
+      const { bus_id, key, phone: ph } = await req.json();
       if (!busOk(bus_id) || typeof key !== "string") return out({ error: "Datos inválidos" }, 400);
       const ip = (req.headers.get("x-forwarded-for") || "?").split(",")[0].trim();
       const { data: a } = await db.from("attempts").select("*").eq("ip", ip).eq("bus_id", bus_id).maybeSingle();
@@ -42,9 +42,20 @@ Deno.serve(async (req) => {
         return out({ error: "KEY incorrecta" }, 401);
       }
       await db.from("attempts").delete().eq("ip", ip).eq("bus_id", bus_id);
+      // Celular obligatorio para buses (el admin no lo usa). UNA reserva por celular; una sola sesión activa por celular.
+      let phone: string | null = null;
+      if (bus_id !== "admin") {
+        phone = String(ph ?? "").replace(/[\s-]/g, "");
+        if (!/^\d{10}$/.test(phone)) return out({ error: "Escribe tu celular de 10 dígitos" }, 400);
+        const { data: r } = await db.from("reservations").select("folio").eq("phone", phone).maybeSingle();
+        if (r) return out({ error: "Este celular ya tiene una reserva. No se puede reservar ni cambiar asientos. Si hubo un error, contacta a soporte." }, 409);
+        const { data: old } = await db.from("sessions").select("id").eq("phone", phone);   // otra pestaña/dispositivo con el mismo celular
+        if (old?.length) { const ids = old.map((x) => x.id);
+          await db.from("seats").delete().in("session_id", ids).eq("status", "held"); await db.from("sessions").delete().in("id", ids); }
+      }
       const token = rnd(32);
       const dur = bus_id === "admin" ? 4 * 3600 : 1800;   // admin: 4 h; buses: 30 min
-      await db.from("sessions").insert({ token_hash: await sha(token), bus_id, expires_at: new Date(Date.now() + dur * 1e3).toISOString() });
+      await db.from("sessions").insert({ token_hash: await sha(token), bus_id, phone, expires_at: new Date(Date.now() + dur * 1e3).toISOString() });
       return out({ token, expires_in: dur });
     }
 
@@ -141,10 +152,10 @@ Deno.serve(async (req) => {
       const bus = q.get("bus_id") || ""; if (!busOk(bus)) return out({ error: "Datos inválidos" }, 400);
       const s = await sesion(req, bus);
       const { data } = await db.from("seats").select("seat,status,session_id,held_until").eq("bus_id", bus);
-      const r = { taken: [] as number[], held: [] as number[], mine: [] as number[] };
+      const r = { taken: [] as number[], held: [] as number[], mine: [] as number[], mine_until: {} as Record<number, string>, now: Date.now() };
       for (const x of data || []) {
         if (x.status === "taken") r.taken.push(x.seat);
-        else if (new Date(x.held_until) > new Date()) { r.held.push(x.seat); if (s && x.session_id === s.id) r.mine.push(x.seat); }
+        else if (new Date(x.held_until) > new Date()) { r.held.push(x.seat); if (s && x.session_id === s.id) { r.mine.push(x.seat); r.mine_until[x.seat] = x.held_until; } }
       }
       return out(r);
     }
@@ -162,14 +173,19 @@ Deno.serve(async (req) => {
       const b = await req.json();
       if (!busOk(b.bus_id)) return out({ error: "Datos inválidos" }, 400);
       const s = await sesion(req, b.bus_id); if (!s) return out({ error: "Sesión inválida" }, 401);
-      const name = String(b.name || "").trim(), phone = String(b.phone || "").replace(/[\s-]/g, "");
+      const name = String(b.name || "").trim(), phone = s.phone;   // el celular sale de la sesión, no del formulario
+      if (!phone) return out({ error: "Sesión inválida" }, 401);
       const addr = String(b.address || "").trim().slice(0, 120), boarding = String(b.boarding || "").slice(0, 60);
       const seats = Array.isArray(b.seats) ? [...new Set(b.seats)].filter((n) => Number.isInteger(n) && n > 0 && n < 100) : [];
-      if (!/^[\p{L}][\p{L} .'-]{2,79}$/u.test(name) || !/^\d{10}$/.test(phone) || !seats.length || seats.length > 10 || b.consent !== true)
+      if (!/^[\p{L}][\p{L} .'-]{2,79}$/u.test(name) || !seats.length || seats.length > 10 || b.consent !== true)
         return out({ error: "Revisa tus datos y acepta el aviso de privacidad" }, 400);
+      const { data: ya } = await db.from("reservations").select("folio").eq("phone", phone).maybeSingle();
+      if (ya) return out({ error: "Este celular ya tiene una reserva. No se puede reservar dos veces." }, 409);
       const folio = "PG-" + rnd(5).toUpperCase();
       const { data } = await db.rpc("crear_reserva", { p_bus: b.bus_id, p_session: s.id, p_seats: seats, p_folio: folio, p_name: name, p_phone: phone, p_addr: addr, p_boarding: boarding });
-      return data ? out({ folio }) : out({ error: "Tus asientos expiraron o fueron tomados. Elígelos de nuevo." }, 409);
+      if (!data) return out({ error: "Tus asientos expiraron (2 min) o fueron tomados. Elígelos de nuevo." }, 409);
+      await db.from("sessions").delete().eq("id", s.id);   // reserva hecha: la sesión se cierra, no se pueden apartar más lugares
+      return out({ folio });
     }
 
     if (req.method === "GET" && path === "/my-reservation") {   // folio aleatorio de 40 bits; solo datos NO sensibles

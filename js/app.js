@@ -9,7 +9,7 @@ const h = (t, a = {}, ...k) => { const e = document.createElement(t);
   for (const [x, v] of Object.entries(a)) x === 'class' ? e.className = v : x.startsWith('on') ? e.addEventListener(x.slice(2), v) : e.setAttribute(x, v);
   e.append(...k.filter(c => c != null)); return e; };
 const $app = document.getElementById('app');
-let cfg, installEvt, tick;
+let cfg, installEvt, tick, cuenta;
 const fmt = f => new Date(f + 'T12:00:00').toLocaleDateString('es-MX', {day:'numeric', month:'long', year:'numeric'});
 
 function modal(...contenido){
@@ -182,54 +182,73 @@ document.addEventListener('visibilitychange', () => { if(gps && document.visibil
 /* ---------- PANTALLA 2: reserva por autobús ---------- */
 function reserva(id){
   const b = cfg.buses.find(x => x.id === id); if(!b) return void (location.hash = '#/');
-  const st = {token:null, sel:new Set()};
+  const st = {token:null, phone:'', sel:new Set(), exp:new Map()};
   const box = h('div', {class:'bus-card'});
   $app.replaceChildren(h('a', {href:'#/'}, '← Volver'), h('h2', {}, b.nombre), box);
   pasoKey();
 
-  function pasoKey(msgTxt = ''){            // Paso 1: KEY (se valida SOLO en el servidor)
+  function pasoKey(msgTxt = ''){            // Paso 1: celular + KEY (la KEY y el celular se validan SOLO en el servidor)
+    clearInterval(tick); clearInterval(cuenta);
+    const tel = h('input', {type:'tel', class:'campo', placeholder:'Tu celular (10 dígitos)', inputmode:'numeric', maxlength:'14', autocomplete:'tel'});
     const inp = h('input', {type:'password', class:'campo', placeholder:'KEY del autobús', maxlength:'64', autocomplete:'off'});
     const msg = h('p', {class:'msg'}, msgTxt);
-    box.replaceChildren(h('h3', {}, 'VALIDA TU KEY'), inp, msg,
+    box.replaceChildren(h('h3', {}, 'VALIDA TU CELULAR Y TU KEY'),
+      h('p', {}, 'Solo se permite UNA reserva por celular y después no se puede cambiar. Revisa bien tu número.'), tel, inp, msg,
       h('button', {class:'btn negro', onclick:async () => {
-        try { st.token = (await api.validateKey(b.id, inp.value.trim())).token; inp.value = ''; pasoReserva(); }
+        const t = tel.value.replace(/[\s-]/g, '');
+        if(!/^\d{10}$/.test(t)) return msg.textContent = 'El celular debe tener 10 dígitos';
+        if(!confirm(`¿Tu celular es ${t}?\n\nCon este número quedará tu reserva y no podrá cambiarse.`)) return;
+        try { st.token = (await api.validateKey(b.id, inp.value.trim(), t)).token; st.phone = t; inp.value = ''; pasoReserva(); }
         catch(e) { msg.textContent = e.message; } }}, 'VALIDAR'));
   }
-  function pasoReserva(){                   // Pasos 2-4
+  function pasoReserva(){                   // Pasos 2-4: tus datos → asientos (se apartan 2 min) → confirmar
     const sel = h('select', {class:'campo'}, h('option', {value:'', disabled:'', selected:'', hidden:''}, 'Punto de abordaje'), ...(b.itinerario || b.puntos_abordaje.map(p => ({punto:p}))).map(x => h('option', {value:x.punto}, x.cita ? `${x.punto} · cita ${x.cita}` : x.punto)));
-    const mapa = h('div', {class:'mapa'}), lista = h('p', {}, ''), msg = h('p', {class:'msg'});
+    const mapa = h('div', {class:'mapa'}), lista = h('p', {}, ''), crono = h('p', {class:'live-estado'}), msg = h('p', {class:'msg'});
     const nombre = h('input', {class:'campo', placeholder:'Nombre completo', maxlength:'80', autocomplete:'name'});
-    const tel = h('input', {class:'campo', placeholder:'WhatsApp / teléfono (10 dígitos)', inputmode:'numeric', maxlength:'14', autocomplete:'tel'});
     const dom = h('input', {class:'campo', placeholder:'Punto de referencia', maxlength:'120'});
     const chk = h('input', {type:'checkbox'});
-    const fallo = e => { if(e.status === 401) pasoKey('Tu sesión expiró, valida la KEY de nuevo.'); else msg.textContent = e.message; };
+    const fallo = e => { if(e.status === 401) pasoKey('Tu sesión expiró, valida tu celular y KEY de nuevo.'); else msg.textContent = e.message; };
+    const datosOk = () => !/^[\p{L}][\p{L} .'-]{2,79}$/u.test(nombre.value.trim()) ? 'Primero escribe tu nombre completo'
+      : !sel.value ? 'Primero elige tu punto de abordaje' : !chk.checked ? 'Primero acepta el aviso de privacidad' : '';
+    const mmss = ms => { const x = Math.ceil(ms / 1000); return Math.floor(x / 60) + ':' + String(x % 60).padStart(2, '0'); };
+    function reloj(){                       // cuenta regresiva local; al vencer, el servidor ya liberó el asiento y se refresca el mapa
+      const t = Date.now(); let menor = Infinity, vencido = false;
+      for(const [n, f] of st.exp){ if(f <= t){ vencido = true; st.exp.delete(n); } else menor = Math.min(menor, f); }
+      crono.textContent = menor === Infinity ? '' : '⏱ Te quedan ' + mmss(menor - t) + ' para confirmar; si no, el asiento se libera';
+      if(vencido) pintar();
+    }
     async function pintar(){
-      let s = {taken:[], held:[], mine:[]}; try { s = await api.getSeats(b.id, st.token); } catch(e) { return fallo(e); }
-      const mine = new Set(s.mine); st.sel = new Set([...st.sel].filter(n => mine.has(n)));
+      let s = {taken:[], held:[], mine:[], mine_until:{}, now:Date.now()}; try { s = await api.getSeats(b.id, st.token); } catch(e) { return fallo(e); }
+      const mine = new Set(s.mine), skew = Date.now() - (s.now || Date.now());
+      const perdidos = [...st.sel].filter(n => !mine.has(n));
+      if(perdidos.length) msg.textContent = `Se liberó el asiento ${perdidos.sort((a, c) => a - c).join(', ')} (pasaron 2 minutos). Elígelo de nuevo si lo quieres.`;
+      st.sel = new Set([...st.sel].filter(n => mine.has(n)));
+      st.exp = new Map(s.mine.map(n => [n, new Date(s.mine_until[n]).getTime() + skew]));
       renderMapa(mapa, b.layout, {taken:s.taken, held:s.held.filter(n => !mine.has(n)), selected:st.sel, onToggle:alternar, frente:b.frente, tvFrente:b.tv_frente});
-      lista.textContent = `${st.sel.size} SELECCIONADOS` + (st.sel.size ? ': ' + [...st.sel].sort((a, c) => a - c).join(', ') + ' (apartados 10 min)' : '');
+      lista.textContent = `${st.sel.size} SELECCIONADOS` + (st.sel.size ? ': ' + [...st.sel].sort((a, c) => a - c).join(', ') + ' (se liberan a los 2 min si no confirmas)' : '');
+      reloj();
     }
     async function alternar(n){
+      if(!st.sel.has(n)){ const e = datosOk(); if(e){ msg.textContent = e; return; } }   // sin datos completos no se aparta nada
       try { await api.holdSeat(b.id, n, st.token, st.sel.has(n)); st.sel.has(n) ? st.sel.delete(n) : st.sel.add(n); msg.textContent = ''; }
       catch(e) { fallo(e); }
       pintar();
     }
     async function limpiar(){ for(const n of [...st.sel]) try { await api.holdSeat(b.id, n, st.token, true); } catch {} st.sel.clear(); pintar(); }
     async function enviar(){
-      const t = tel.value.replace(/[\s-]/g, ''), n = nombre.value.trim();
-      if(!sel.value) return msg.textContent = 'Elige tu punto de abordaje';
+      const e = datosOk(); if(e) return msg.textContent = e;
       if(!st.sel.size) return msg.textContent = 'Elige al menos un asiento';
-      if(!/^[\p{L}][\p{L} .'-]{2,79}$/u.test(n)) return msg.textContent = 'Nombre no válido';
-      if(!/^\d{10}$/.test(t)) return msg.textContent = 'El teléfono debe tener 10 dígitos';
-      if(!chk.checked) return msg.textContent = 'Debes aceptar el aviso de privacidad';
-      const datos = {bus_id:b.id, seats:[...st.sel].sort((a, c) => a - c), boarding:sel.value, name:n, phone:t, address:dom.value.trim().slice(0, 120), consent:true};
-      try { const r = await api.createReservation(datos, st.token); clearInterval(tick); confirmacion(r.folio, datos); }
+      const n = nombre.value.trim(), asientos = [...st.sel].sort((a, c) => a - c);
+      if(!confirm(`Vas a reservar en ${b.nombre}:\n\n• Asientos: ${asientos.join(', ')}\n• Nombre: ${n}\n• Celular: ${st.phone}\n• Abordaje: ${sel.value}\n\nNo podrás cambiarlos después. ¿Confirmas?`)) return;
+      const datos = {bus_id:b.id, seats:asientos, boarding:sel.value, name:n, address:dom.value.trim().slice(0, 120), consent:true};
+      try { const r = await api.createReservation(datos, st.token); clearInterval(tick); clearInterval(cuenta); confirmacion(r.folio, datos); }
       catch(e) { fallo(e); pintar(); }
     }
-    box.replaceChildren(h('h3', {}, 'ELIGE TUS LUGARES'), sel, mapa, lista, nombre, tel, dom,
+    box.replaceChildren(h('h3', {}, '1. TUS DATOS'), h('p', {}, 'Celular: ' + st.phone.slice(0, 2) + '••••' + st.phone.slice(-4)), nombre, sel, dom,
       h('label', {}, chk, ' Acepto el ', h('a', {href:'#', onclick:e => { e.preventDefault(); modal(h('h3', {}, 'AVISO DE PRIVACIDAD'), h('p', {}, cfg.festival.aviso_privacidad)); }}, 'aviso de privacidad')),
-      msg, h('button', {class:'btn negro', onclick:enviar}, '🔥 APARTAR LUGARES'), ' ', h('button', {class:'btn', onclick:limpiar}, 'LIMPIAR'));
-    pintar(); clearInterval(tick); tick = setInterval(pintar, 15000);
+      h('h3', {}, '2. ELIGE TUS LUGARES'), h('p', {}, 'Cada asiento se aparta solo 2 minutos. Confirma antes de que termine el tiempo.'), mapa, lista, crono, msg,
+      h('button', {class:'btn negro', onclick:enviar}, '🔥 CONFIRMAR RESERVA'), ' ', h('button', {class:'btn', onclick:limpiar}, 'LIMPIAR'));
+    pintar(); clearInterval(tick); tick = setInterval(pintar, 10000); clearInterval(cuenta); cuenta = setInterval(reloj, 1000);
   }
   function confirmacion(folio, d){          // Paso 5
     box.replaceChildren(h('h3', {}, '¡LISTO, A ROCKEAR!'), h('p', {}, 'Festival: ' + cfg.festival.nombre), h('p', {}, 'Autobús: ' + b.nombre),
@@ -322,7 +341,7 @@ function admin(){
 }
 
 /* ---------- Arranque ---------- */
-function route(){ clearInterval(tick); clearInterval(carTimer); clearInterval(liveTimer); if(location.hash !== '#/admin') detenerGps(); const m = location.hash.match(/^#\/bus\/([\w-]+)$/); location.hash === '#/admin' ? admin() : m ? reserva(m[1]) : inicio(); scrollTo(0, 0); }
+function route(){ clearInterval(tick); clearInterval(cuenta); clearInterval(carTimer); clearInterval(liveTimer); if(location.hash !== '#/admin') detenerGps(); const m = location.hash.match(/^#\/bus\/([\w-]+)$/); location.hash === '#/admin' ? admin() : m ? reserva(m[1]) : inicio(); scrollTo(0, 0); }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; document.getElementById('btnInstalar')?.removeAttribute('hidden'); });
 (async () => {
   try { cfg = await loadConfig(); api.setBase(cfg.festival.api_base); document.title = cfg.festival.nombre;
