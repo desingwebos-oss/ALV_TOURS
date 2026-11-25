@@ -59,7 +59,7 @@
     "nombre": "BUS 3",
     "foto": "img/bus3.webp",
     "activo": true,
-    "puntos_abordaje": ["Metro Revolución", "Metro Agrícola Oriental"],
+    "puntos_abordaje": ["Metro Revolución", "Peñon Viejo"],
     "tv_frente": true,
     "frente": {"izq": "CHOFER", "der": "PUERTA"},
     "layout": [
