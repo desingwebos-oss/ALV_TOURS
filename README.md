@@ -73,3 +73,10 @@ El tracker de ubicación está apagado: `"tracker": false` en `config/festival.j
 
 ## Avisos por autobús
 En el panel `#/admin`, al publicar un aviso puedes elegir el autobús que lo emite (o "Aviso general"). La tarjeta muestra el nombre del bus. Ejecuta antes `supabase/agregar_bus_a_avisos.sql` y redespliega la función.
+
+
+## Folio legible y "Mi reserva" (wallet)
+- Folio legible: `TC-<autobús>-<reserva>`, ej. `TC-5-1` = Tecate Comuna, bus 5, primera reserva de ese bus (la siguiente es `TC-5-2`). Cada bus cuenta por separado. La clave `TC` se cambia con el secreto `EVENT_CODE` (`supabase secrets set EVENT_CODE=XX`). Los folios anteriores (`PG-…`) siguen funcionando.
+- Al reservar, el pase queda guardado en el celular (localStorage) y se ve sin internet. Botón **🎟 MI RESERVA** en la portada y en el menú ☰.
+- Si cambia de celular o borra datos: **Mi reserva** → celular + nombre → recupera el pase. Se puede **guardar como imagen** (con QR del folio).
+- Seguridad: la consulta exige celular + nombre (o folio + celular); 5 fallos = bloqueo de 15 min por IP. No hay cambios en la base de datos: solo redesplegar `supabase functions deploy api --no-verify-jwt`.

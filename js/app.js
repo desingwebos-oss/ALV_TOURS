@@ -4,6 +4,7 @@ import { loadConfig } from './config-loader.js';
 import * as api from './api.js';
 import { renderMapa, contarAsientos } from './seats.js';
 import { crearMapa, distanciaKm, coordOk } from './mapa.js';
+import { abrirWallet, guardarPase } from './wallet.js';
 
 const h = (t, a = {}, ...k) => { const e = document.createElement(t);
   for (const [x, v] of Object.entries(a)) x === 'class' ? e.className = v : x.startsWith('on') ? e.addEventListener(x.slice(2), v) : e.setAttribute(x, v);
@@ -104,6 +105,7 @@ function inicio(){
       h('p', {}, f.bienvenida),
       h('div', {class:'acciones'},
         h('button', {class:'btn negro', id:'btnInstalar', hidden:'', onclick:() => installEvt && installEvt.prompt()}, 'INSTALAR APP'),
+        h('button', {class:'btn naranja', type:'button', onclick:() => abrirWallet(cfg)}, '🎟 MI RESERVA'),
         wa ? h('a', {class:'btn', href:wa, rel:'noopener'}, 'Soporte por WhatsApp') : null)));
   // lista desplegable del cartel: justo debajo de NOVEDADES
   const desplegable = destacados.length || cartel.length ? h('details', {class:'cartel'}, h('summary', {class:'btn'}, 'VER CARTEL COMPLETO'),
@@ -121,6 +123,7 @@ function menuLateral(){
     h('div', {class:'menu-panel'},
       h('div', {class:'menu-cab'}, h('h2', {}, 'SELECCIONAR ASIENTOS'),
         h('button', {class:'cerrar', type:'button', 'aria-label':'Cerrar menú', onclick:() => d.close()}, '✕')),
+      h('ul', {class:'menu-lista'}, h('li', {}, h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); abrirWallet(cfg); }}, h('b', {}, '🎟 Mi reserva'), h('small', {}, 'Ver mi folio')))),
       h('p', {class:'menu-sub'}, 'Elige tu autobús'),
       h('ul', {class:'menu-lista'}, ...cfg.buses.map(b => h('li', {},
         h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); modalBus(b); }},
@@ -240,7 +243,9 @@ function reserva(id){
       const n = nombre.value.trim(), asientos = [...st.sel].sort((a, c) => a - c);
       if(!confirm(`Vas a reservar en ${b.nombre}:\n\n• Asientos: ${asientos.join(', ')}\n• Nombre: ${n}\n• Celular: ${st.phone}\n• Abordaje: ${sel.value}\n\nNo podrás cambiarlos después. ¿Confirmas?`)) return;
       const datos = {bus_id:b.id, seats:asientos, boarding:sel.value, name:n, address:sel.value.slice(0, 120), consent:true};
-      try { const r = await api.createReservation(datos, st.token); clearInterval(tick); clearInterval(cuenta); confirmacion(r.folio, datos); }
+      try { const r = await api.createReservation(datos, st.token); clearInterval(tick); clearInterval(cuenta);
+        guardarPase({folio:r.folio, bus_id:b.id, seats:asientos, boarding:datos.boarding, name:n.split(' ')[0], phone:st.phone});   // wallet: queda en este celular
+        confirmacion(r.folio, datos); }
       catch(e) { fallo(e); pintar(); }
     }
     box.replaceChildren(h('h3', {}, '1. TUS DATOS'), h('p', {}, 'Celular: ' + st.phone.slice(0, 2) + '••••' + st.phone.slice(-4)), nombre, sel,
@@ -252,7 +257,8 @@ function reserva(id){
   function confirmacion(folio, d){          // Paso 5
     box.replaceChildren(h('h3', {}, '¡LISTO, A ROCKEAR!'), h('p', {}, 'Festival: ' + cfg.festival.nombre), h('p', {}, 'Autobús: ' + b.nombre),
       h('p', {}, 'Asientos: ' + d.seats.join(', ')), h('p', {}, 'Abordaje: ' + d.boarding), h('p', {}, 'Nombre: ' + d.name),
-      h('h2', {}, 'FOLIO: ' + folio), h('p', {}, 'Guarda tu folio. No lo compartas con nadie.'));
+      h('h2', {}, 'FOLIO: ' + folio), h('p', {}, 'Guarda tu folio. No lo compartas con nadie.'),
+      h('button', {class:'btn naranja', type:'button', onclick:() => abrirWallet(cfg)}, '🎟 VER MI PASE'));
   }
 }
 

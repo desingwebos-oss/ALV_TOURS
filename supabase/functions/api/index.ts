@@ -1,4 +1,4 @@
-// Edge Function "api": validate-key, seats, hold-seat, create-reservation, my-reservation, pos (tracker GPS).
+// Edge Function "api": validate-key, seats, hold-seat, create-reservation, my-reservation, wallet, pos (tracker GPS).
 // Secretos (SUPABASE_SERVICE_ROLE_KEY, ALLOWED_ORIGIN) viven solo en Supabase, nunca en el repo.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
@@ -12,6 +12,28 @@ const hex = (u: Uint8Array) => [...u].map(b => b.toString(16).padStart(2, "0")).
 const sha = async (s: string) => hex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))));
 const rnd = (n: number) => hex(crypto.getRandomValues(new Uint8Array(n)));
 const busOk = (v: unknown) => typeof v === "string" && /^[\w-]{1,32}$/.test(v);
+// Folio legible: TC-<núm. de autobús>-<núm. de reserva en ese autobús>, ej. TC-5-1. TC = clave del evento (secreto EVENT_CODE para cambiarla).
+const EVENTO = (Deno.env.get("EVENT_CODE") || "TC").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6) || "TC";
+const numBus = (id: string) => (id.match(/\d+/) || ["0"])[0];
+const folioOk = (f: string) => /^[A-Z0-9]{1,6}-\d{1,3}-\d{1,4}$/.test(f) || /^[A-HJKMNP-Z2-9]{6}$/.test(f) || /^PG-[0-9A-F]{10}$/.test(f);   // acepta también los formatos anteriores
+// Siguiente número de reserva del autobús (1, 2, 3…). Si dos personas confirman a la vez, la base rechaza el duplicado y se reintenta.
+async function siguienteFolio(bus: string) {
+  const pref = `${EVENTO}-${numBus(bus)}-`;
+  const { data } = await db.from("reservations").select("folio").like("folio", pref + "%").limit(1000);
+  const max = (data || []).reduce((m, r) => Math.max(m, parseInt(String(r.folio).slice(pref.length), 10) || 0), 0);
+  return pref + (max + 1);
+}
+const limpio = (t: unknown) => String(t ?? "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
+// Bloqueo por IP para las consultas de "Mi reserva" (5 fallos = 15 min), usando la misma tabla attempts
+async function bloqueada(ip: string) {
+  const { data: a } = await db.from("attempts").select("*").eq("ip", ip).eq("bus_id", "wallet").maybeSingle();
+  return !!(a?.locked_until && new Date(a.locked_until) > new Date());
+}
+async function fallaWallet(ip: string) {
+  const { data: a } = await db.from("attempts").select("*").eq("ip", ip).eq("bus_id", "wallet").maybeSingle();
+  const prev = a && !(a.locked_until && new Date(a.locked_until) <= new Date()) ? a.fails : 0, n = prev + 1;
+  await db.from("attempts").upsert({ ip, bus_id: "wallet", fails: n, locked_until: n >= 5 ? new Date(Date.now() + 15 * 60e3).toISOString() : null });
+}
 
 // Devuelve la sesión si el token es válido, no expiró y es de ESE bus.
 async function sesion(req: Request, bus: string) {
@@ -181,18 +203,31 @@ Deno.serve(async (req) => {
         return out({ error: "Revisa tus datos y acepta el aviso de privacidad" }, 400);
       const { data: ya } = await db.from("reservations").select("folio").eq("phone", phone).maybeSingle();
       if (ya) return out({ error: "Este celular ya tiene una reserva. No se puede reservar dos veces." }, 409);
-      const folio = "PG-" + rnd(5).toUpperCase();
-      const { data } = await db.rpc("crear_reserva", { p_bus: b.bus_id, p_session: s.id, p_seats: seats, p_folio: folio, p_name: name, p_phone: phone, p_addr: addr, p_boarding: boarding });
-      if (!data) return out({ error: "Tus asientos expiraron (2 min) o fueron tomados. Elígelos de nuevo." }, 409);
+      let folio = "", ok = false;
+      for (let i = 0; i < 4 && !ok; i++) {       // reintenta si otro pasajero tomó el mismo número al mismo tiempo
+        folio = await siguienteFolio(b.bus_id);
+        const { data } = await db.rpc("crear_reserva", { p_bus: b.bus_id, p_session: s.id, p_seats: seats, p_folio: folio, p_name: name, p_phone: phone, p_addr: addr, p_boarding: boarding });
+        ok = !!data;
+      }
+      if (!ok) return out({ error: "Tus asientos expiraron (2 min) o fueron tomados. Elígelos de nuevo." }, 409);
       await db.from("sessions").delete().eq("id", s.id);   // reserva hecha: la sesión se cierra, no se pueden apartar más lugares
       return out({ folio });
     }
 
-    if (req.method === "GET" && path === "/my-reservation") {   // folio aleatorio de 40 bits; solo datos NO sensibles
-      const folio = (q.get("folio") || "").toUpperCase();
-      if (!/^PG-[0-9A-F]{10}$/.test(folio)) return out({ error: "Folio inválido" }, 400);
-      const { data } = await db.from("reservations").select("folio,bus_id,seats,boarding,name").eq("folio", folio).maybeSingle();
-      return data ? out({ ...data, name: data.name.split(" ")[0] }) : out({ error: "No encontrado" }, 404);
+    // ---------- MI RESERVA (wallet): solo con folio + celular, o celular + nombre. Datos NO sensibles; 5 fallos = bloqueo 15 min ----------
+    if (path === "/my-reservation" || path === "/wallet") {
+      const ip = (req.headers.get("x-forwarded-for") || "?").split(",")[0].trim();
+      if (await bloqueada(ip)) return out({ error: "Demasiados intentos. Intenta en 15 minutos." }, 429);
+      const b = req.method === "POST" ? await req.json().catch(() => ({})) : Object.fromEntries(q);
+      const phone = String(b.phone ?? "").replace(/[\s-]/g, "");
+      if (!/^\d{10}$/.test(phone)) return out({ error: "Escribe tu celular de 10 dígitos" }, 400);
+      const { data } = await db.from("reservations").select("folio,bus_id,seats,boarding,name").eq("phone", phone).maybeSingle();
+      let ok = false;
+      if (data && path === "/my-reservation") ok = folioOk(String(b.folio ?? "").toUpperCase()) && data.folio === String(b.folio).toUpperCase();
+      if (data && path === "/wallet") { const n = limpio(b.name); ok = n.length >= 3 && (n === limpio(data.name) || n === limpio(data.name).split(" ")[0]); }
+      if (!ok) { await fallaWallet(ip); return out({ error: "No encontramos una reserva con esos datos" }, 404); }
+      await db.from("attempts").delete().eq("ip", ip).eq("bus_id", "wallet");
+      return out({ ...data, name: data.name.split(" ")[0] });
     }
     return out({ error: "No encontrado" }, 404);
   } catch (_) { return out({ error: "Error de servidor" }, 500); }   // no se filtran detalles ni datos en logs
