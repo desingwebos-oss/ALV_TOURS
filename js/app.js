@@ -205,7 +205,6 @@ function reserva(id){
     const sel = h('select', {class:'campo'}, h('option', {value:'', disabled:'', selected:'', hidden:''}, 'Punto de abordaje'), ...(b.itinerario || b.puntos_abordaje.map(p => ({punto:p}))).map(x => h('option', {value:x.punto}, x.cita ? `${x.punto} · cita ${x.cita}` : x.punto)));
     const mapa = h('div', {class:'mapa'}), lista = h('p', {}, ''), crono = h('p', {class:'live-estado'}), msg = h('p', {class:'msg'});
     const nombre = h('input', {class:'campo', placeholder:'Nombre completo', maxlength:'80', autocomplete:'name'});
-    const dom = h('input', {class:'campo', placeholder:'Punto de referencia', maxlength:'120'});
     const chk = h('input', {type:'checkbox'});
     const fallo = e => { if(e.status === 401) pasoKey('Tu sesión expiró, valida tu celular y KEY de nuevo.'); else msg.textContent = e.message; };
     const datosOk = () => !/^[\p{L}][\p{L} .'-]{2,79}$/u.test(nombre.value.trim()) ? 'Primero escribe tu nombre completo'
@@ -240,11 +239,11 @@ function reserva(id){
       if(!st.sel.size) return msg.textContent = 'Elige al menos un asiento';
       const n = nombre.value.trim(), asientos = [...st.sel].sort((a, c) => a - c);
       if(!confirm(`Vas a reservar en ${b.nombre}:\n\n• Asientos: ${asientos.join(', ')}\n• Nombre: ${n}\n• Celular: ${st.phone}\n• Abordaje: ${sel.value}\n\nNo podrás cambiarlos después. ¿Confirmas?`)) return;
-      const datos = {bus_id:b.id, seats:asientos, boarding:sel.value, name:n, address:dom.value.trim().slice(0, 120), consent:true};
+      const datos = {bus_id:b.id, seats:asientos, boarding:sel.value, name:n, address:sel.value.slice(0, 120), consent:true};
       try { const r = await api.createReservation(datos, st.token); clearInterval(tick); clearInterval(cuenta); confirmacion(r.folio, datos); }
       catch(e) { fallo(e); pintar(); }
     }
-    box.replaceChildren(h('h3', {}, '1. TUS DATOS'), h('p', {}, 'Celular: ' + st.phone.slice(0, 2) + '••••' + st.phone.slice(-4)), nombre, sel, dom,
+    box.replaceChildren(h('h3', {}, '1. TUS DATOS'), h('p', {}, 'Celular: ' + st.phone.slice(0, 2) + '••••' + st.phone.slice(-4)), nombre, sel,
       h('label', {}, chk, ' Acepto el ', h('a', {href:'#', onclick:e => { e.preventDefault(); modal(h('h3', {}, 'AVISO DE PRIVACIDAD'), h('p', {}, cfg.festival.aviso_privacidad)); }}, 'aviso de privacidad')),
       h('h3', {}, '2. ELIGE TUS LUGARES'), h('p', {}, 'Cada asiento se aparta solo 2 minutos. Confirma antes de que termine el tiempo.'), mapa, lista, crono, msg,
       h('button', {class:'btn negro', onclick:enviar}, '🔥 CONFIRMAR RESERVA'), ' ', h('button', {class:'btn', onclick:limpiar}, 'LIMPIAR'));

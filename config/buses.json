@@ -4,7 +4,7 @@
     "nombre": "Jose Madero BUS 1",
     "foto": "img/bus1.webp",
     "activo": true,
-    "puntos_abordaje": ["Reloj Ford", "Perinorte", "Metro Revolución"],
+    "puntos_abordaje": ["Reloj de la Ford Izcalli", "Perinorte", "Metro Revolución"],
     "frente": {"izq": "CHOFER", "der": "A"},
     "layout": [
       {"izq": [1, 2], "der": [3, 4]},
@@ -21,9 +21,9 @@
       {"fila": [47, 48, 49], "alinear": "izq"}
     ],
     "itinerario": [
-      {"punto": "Reloj Ford", "cita": "6:00 am", "salida": "6:15 am"},
-      {"punto": "Perinorte", "cita": "6:15 am", "salida": "6:25 am"},
-      {"punto": "Metro Revolución", "cita": "7:15 am", "salida": "7:30 am"}
+      {"punto": "Reloj de la Ford Izcalli", "cita": "6:00 am", "salida": "6:15 am"},
+      {"punto": "Perinorte", "cita": "6:15 am", "salida": "6:30 am aprox."},
+      {"punto": "Metro Revolución", "cita": "7:20 am", "salida": "7:35 am aprox."}
     ]
   },
   {
@@ -59,7 +59,7 @@
     "nombre": "Mars Volta BUS 3",
     "foto": "img/bus3.webp",
     "activo": true,
-    "puntos_abordaje": ["Metro Revolución", "Peñon Viejo"],
+    "puntos_abordaje": ["Metro Revolución", "Metro Peñón Viejo"],
     "tv_frente": true,
     "frente": {"izq": "CHOFER", "der": "PUERTA"},
     "layout": [
@@ -78,8 +78,8 @@
       {"fila": [43, 44, 47, 45, 46]}
     ],
     "itinerario": [
-      {"punto": "Metro Revolución", "cita": "7:20 am", "salida": "7:40 am"},
-      {"punto": "Metro Agrícola Oriental", "cita": "8:00 am", "salida": "8:15 am aprox."}
+      {"punto": "Metro Revolución", "cita": "7:20 am", "salida": "7:35 am"},
+      {"punto": "Metro Peñón Viejo", "cita": "8:00 am", "salida": "8:15 am"}
     ]
   },
   {
@@ -90,9 +90,9 @@
     "puntos_abordaje": ["Estadio Azteca", "Metro General Anaya", "Metro Tepalcates"],
     "layout_de": "bus1",
     "itinerario": [
-      {"punto": "Estadio Azteca", "cita": "7:20 am", "salida": "7:40 am"},
-      {"punto": "Metro General Anaya", "cita": "7:40 am", "salida": "7:55 am aprox."},
-      {"punto": "Metro Tepalcates", "cita": "8:30 am", "salida": "8:40 am aprox."}
+      {"punto": "Estadio Azteca", "cita": "7:20 am", "salida": "7:35 am"},
+      {"punto": "Metro General Anaya", "cita": "7:35 am", "salida": "7:50 am aprox."},
+      {"punto": "Metro Tepalcates", "cita": "8:15 am", "salida": "8:25 am aprox."}
     ]
   },
   {
@@ -118,9 +118,9 @@
       {"izq": [{"t": "WC", "span": 2}], "der": [{"t": "WC", "span": 2}]}
     ],
     "itinerario": [
-      {"punto": "Metro Agrícola Oriental", "cita": "8:00 am", "salida": "8:10 am"},
-      {"punto": "Metro Tepalcates", "cita": "8:10 am", "salida": "8:20 am aprox."},
-      {"punto": "Metro Peñón Viejo", "cita": "8:20 am", "salida": "8:30 am aprox."}
+      {"punto": "Metro Agrícola Oriental", "cita": "7:45 am", "salida": "8:00 am"},
+      {"punto": "Metro Tepalcates", "cita": "8:00 am", "salida": "8:10 am aprox."},
+      {"punto": "Metro Peñón Viejo", "cita": "8:10 am", "salida": "8:20 am"}
     ]
   },
   {
@@ -146,7 +146,7 @@
       {"fila": [43, 44, 45, 46, 47]}
     ],
     "itinerario": [
-      {"punto": "FESC C4", "cita": "6:35 am", "salida": "6:50 am"}
+      {"punto": "FESC C4", "cita": "6:30 am", "salida": "6:45 am"}
     ]
   },
   {
@@ -154,7 +154,7 @@
     "nombre": "Caligari BUS 7",
     "foto": "img/bus7.webp",
     "activo": true,
-    "puntos_abordaje": ["Reloj Ford", "Perinorte", "La Bandera Tultitlán"],
+    "puntos_abordaje": ["Reloj de la Ford", "Perinorte", "La Bandera Tultitlán"],
     "layout": [
       {"izq": [1, 2], "der": [3, 4]},
       {"izq": [5, 6], "der": [7, 8]},
@@ -171,9 +171,9 @@
       {"izq": [47, 48], "der": ["WC"]}
     ],
     "itinerario": [
-      {"punto": "Reloj Ford", "cita": "6:35 am", "salida": "6:50 am"},
-      {"punto": "Perinorte", "cita": "6:50 am", "salida": "7:05 am aprox."},
-      {"punto": "La Bandera Tultitlán", "cita": "7:05 am", "salida": "7:20 am aprox."}
+      {"punto": "Reloj de la Ford", "cita": "6:30 am", "salida": "6:45 am"},
+      {"punto": "Perinorte", "cita": "6:45 am", "salida": "7:00 am aprox."},
+      {"punto": "La Bandera Tultitlán", "cita": "7:00 am", "salida": "7:15 am aprox."}
     ]
   }
 ]
