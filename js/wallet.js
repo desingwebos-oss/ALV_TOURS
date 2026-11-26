@@ -28,27 +28,33 @@ const campo = (et, val) => val ? h('div', {class:'pase-campo'}, h('small', {}, e
 
 function tarjeta(d){
   return h('article', {class:'pase', 'aria-label':'Pase de reserva'},
-    h('div', {class:'pase-top'}, h('small', {}, 'PASE DE ABORDAJE · ALV TOURS'), h('b', {}, d.festival), h('span', {}, [d.fecha, d.lugar].filter(Boolean).join(' · '))),
+    h('div', {class:'pase-top'},
+      h('div', {class:'pase-marcas'}, h('img', {class:'pase-logo', src:'img/logo-alv.png', alt:'ALV Tours', width:'66', height:'60'}),
+        h('img', {class:'pase-logo pase-comuna', src:'img/collage-titulo.webp', alt:d.festival, width:'172', height:'60'})),
+      h('b', {}, 'PASE DE ABORDAJE'), h('span', {}, [d.fecha, d.lugar].filter(Boolean).join(' · '))),
     h('div', {class:'pase-cuerpo'}, campo('PASAJERO', d.nombre), campo('AUTOBÚS', d.bus), campo('ASIENTOS', d.asientos), campo('ABORDAJE', d.abordaje),
       campo('CITA', d.cita), campo('SALIDA', d.salida)),
     h('div', {class:'pase-corte', 'aria-hidden':'true'}),
     h('div', {class:'pase-pie'}, qrCanvas(d.folio), h('div', {class:'pase-folio'}, h('small', {}, 'FOLIO'), h('strong', {}, d.folio))));
 }
 
-function descargarImagen(d){                 // pase como imagen para guardarlo en la galería o mandarlo por WhatsApp
-  const W = 900, H = 1280, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+const cargarImg = src => new Promise(ok => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = src; });
+async function descargarImagen(d){           // pase como imagen para guardarlo en la galería o mandarlo por WhatsApp
+  const [logo, comuna] = await Promise.all([cargarImg('img/logo-alv.png'), cargarImg('img/collage-titulo.webp')]);
+  const W = 900, H = 1400, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
   const rr = (X, Y, w, hh, r) => { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + w, Y, X + w, Y + hh, r); x.arcTo(X + w, Y + hh, X, Y + hh, r); x.arcTo(X, Y + hh, X, Y, r); x.arcTo(X, Y, X + w, Y, r); x.closePath(); };
   x.fillStyle = '#FFC83D'; x.fillRect(0, 0, W, H);
   rr(60, 60, W - 120, H - 120, 40); x.fillStyle = '#FFFBF0'; x.fill(); x.lineWidth = 8; x.strokeStyle = '#2A1A10'; x.stroke();
-  x.save(); rr(60, 60, W - 120, 250, 40); x.clip(); x.fillStyle = '#F7931E'; x.fillRect(60, 60, W - 120, 250); x.restore();
-  x.fillStyle = '#2A1A10'; x.textAlign = 'center'; x.font = '700 28px system-ui,sans-serif'; x.fillText('PASE DE ABORDAJE · ALV TOURS', W / 2, 130);
-  x.font = '900 60px system-ui,sans-serif'; x.fillText(d.festival, W / 2, 210); x.font = '600 30px system-ui,sans-serif'; x.fillText([d.fecha, d.lugar].filter(Boolean).join(' · '), W / 2, 265);
-  x.textAlign = 'left'; let y = 365;
+  x.save(); rr(60, 60, W - 120, 340, 40); x.clip(); x.fillStyle = '#F7931E'; x.fillRect(60, 60, W - 120, 340); x.restore();
+  if(logo){ const lh = 130, lw = lh * logo.naturalWidth / logo.naturalHeight; x.drawImage(logo, 110, 85, lw, lh); }
+  if(comuna){ const ch = 130, cw = ch * comuna.naturalWidth / comuna.naturalHeight, cx = W - 110 - cw; x.save(); rr(cx, 85, cw, ch, 18); x.clip(); x.drawImage(comuna, cx, 85, cw, ch); x.restore(); rr(cx, 85, cw, ch, 18); x.lineWidth = 6; x.strokeStyle = '#2A1A10'; x.stroke(); }
+  x.fillStyle = '#2A1A10'; x.textAlign = 'center'; x.font = '900 64px system-ui,sans-serif'; x.fillText('PASE DE ABORDAJE', W / 2, 300); x.font = '600 30px system-ui,sans-serif'; x.fillText([d.fecha, d.lugar].filter(Boolean).join(' · '), W / 2, 355);
+  x.textAlign = 'left'; let y = 470;
   for (const [et, v] of [['PASAJERO', d.nombre], ['AUTOBÚS', d.bus], ['ASIENTOS', d.asientos], ['ABORDAJE', d.abordaje], ['CITA', d.cita], ['SALIDA', d.salida]]) {
     if(!v) continue; x.fillStyle = '#7a5a3a'; x.font = '700 24px system-ui,sans-serif'; x.fillText(et, 120, y); x.fillStyle = '#2A1A10'; x.font = '800 40px system-ui,sans-serif'; x.fillText(String(v).slice(0, 34), 120, y + 46); y += 92; }
-  x.strokeStyle = '#2A1A10'; x.lineWidth = 4; x.setLineDash([16, 12]); x.beginPath(); x.moveTo(110, 945); x.lineTo(W - 110, 945); x.stroke(); x.setLineDash([]);
-  const q = qrCanvas(d.folio, 8); x.drawImage(q, 115, 975, 210, 210);
-  x.fillStyle = '#7a5a3a'; x.font = '700 24px system-ui,sans-serif'; x.fillText('FOLIO', 370, 1050); x.fillStyle = '#2A1A10'; x.font = '900 88px ui-monospace,Menlo,Consolas,monospace'; x.fillText(d.folio, 365, 1140);
+  x.strokeStyle = '#2A1A10'; x.lineWidth = 4; x.setLineDash([16, 12]); x.beginPath(); x.moveTo(110, 1065); x.lineTo(W - 110, 1065); x.stroke(); x.setLineDash([]);
+  const q = qrCanvas(d.folio, 8); x.drawImage(q, 115, 1095, 210, 210);
+  x.fillStyle = '#7a5a3a'; x.font = '700 24px system-ui,sans-serif'; x.fillText('FOLIO', 370, 1170); x.fillStyle = '#2A1A10'; x.font = '900 88px ui-monospace,Menlo,Consolas,monospace'; x.fillText(d.folio, 365, 1260);
   c.toBlob(b => { if(!b) return; const u = URL.createObjectURL(b), a = h('a', {href:u, download:'pase-' + d.folio + '.png'}); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }, 'image/png');
 }
 
