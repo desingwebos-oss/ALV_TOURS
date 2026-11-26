@@ -152,18 +152,6 @@
       }
     }
 
-    // Expandir el bounding box de L para cubrir el área de T-O-U-R-S y mantenerla sólida
-    const bbL = bboxes[1];
-    for (let id = 3; id <= 7; id++) {
-      const bbt = bboxes[id];
-      if (bbt.count > 0) {
-        if (bbt.minX < bbL.minX) bbL.minX = bbt.minX;
-        if (bbt.maxX > bbL.maxX) bbL.maxX = bbt.maxX;
-        if (bbt.minY < bbL.minY) bbL.minY = bbt.minY;
-        if (bbt.maxY > bbL.maxY) bbL.maxY = bbt.maxY;
-      }
-    }
-
     // Generar sprites independientes en alta resolución
     const pieces = [];
     const logoCx = iw / 2;
@@ -195,13 +183,6 @@
             pd[dIdx + 1] = px[sIdx + 1];
             pd[dIdx + 2] = px[sIdx + 2];
             pd[dIdx + 3] = px[sIdx + 3];
-          } else if (id === 1 && pId >= 3 && pId <= 7) {
-            // Para la L, rellenar el fondo bajo T-O-U-R-S con el color naranja sólido (#EB4D2C)
-            // para que viaje como pieza completa e independiente
-            pd[dIdx] = 235;
-            pd[dIdx + 1] = 77;
-            pd[dIdx + 2] = 44;
-            pd[dIdx + 3] = 255;
           }
         }
       }
@@ -218,10 +199,10 @@
       else if (id === 8 || id === 9 || id === 10) zBase = -1; // Rayos y lema
 
       // Parámetros orbitales para el remolino vertical:
-      // Las piezas se distribuyen en una hélice vertical a lo largo de un cilindro / cono 3D
+      // Las piezas se distribuyen en una hélice vertical equilibrada y contenida en pantalla
       const angleOffset = (id / PIECE_COUNT) * Math.PI * 2 * 1.6 + (id % 5) * 0.5;
-      const vortexY = (id - (PIECE_COUNT - 1) / 2) * 60; // distribución vertical en Y
-      const vortexRadius = 240 + (id % 4) * 45;
+      const vortexY = (id - (PIECE_COUNT - 1) / 2) * 35;
+      const vortexRadius = 150 + (id % 4) * 25;
       const spinTurns = 2.8 + (id % 3) * 0.5;
 
       pieces.push({
@@ -246,7 +227,7 @@
     }
 
     function renderLogoEstatico() {
-      const vw = innerWidth, vh = innerHeight;
+      const vw = ov.clientWidth || innerWidth, vh = ov.clientHeight || innerHeight;
       const dpr = Math.min(devicePixelRatio || 1, 2);
       cv.width = Math.round(vw * dpr);
       cv.height = Math.round(vh * dpr);
@@ -254,7 +235,7 @@
       ctx.fillStyle = BG_COLOR;
       ctx.fillRect(0, 0, vw, vh);
 
-      const k = Math.min((vw * 0.85) / iw, (vh * 0.6) / ih, 460 / iw);
+      const k = Math.min((vw * 0.8) / iw, (vh * 0.5) / ih, 380 / iw);
       const lw = iw * k, lh = ih * k;
       ctx.drawImage(img, (vw - lw) / 2, (vh - lh) / 2, lw, lh);
     }
@@ -284,8 +265,8 @@
         return;
       }
 
-      const vw = innerWidth;
-      const vh = innerHeight;
+      const vw = ov.clientWidth || innerWidth;
+      const vh = ov.clientHeight || innerHeight;
       const dpr = Math.min(devicePixelRatio || 1, 2);
       const cw = Math.round(vw * dpr);
       const ch = Math.round(vh * dpr);
@@ -301,7 +282,7 @@
 
       const cx = vw / 2;
       const cy = vh / 2;
-      const k = Math.min((vw * 0.84) / iw, (vh * 0.58) / ih, 460 / iw);
+      const k = Math.min((vw * 0.8) / iw, (vh * 0.5) / ih, 380 / iw);
 
       const isSwirling = t < T_SWIRL;
       const isSnapping = !isSwirling && t < T_SWIRL + T_SNAP;
@@ -311,6 +292,7 @@
       let exitProgress = 0;
       if (isExiting) {
         exitProgress = Math.min(1, (t - (T_SWIRL + T_SNAP + T_HOLD)) / T_EXIT);
+        ov.style.opacity = String(1 - exitProgress);
       }
 
       // Cámara 3D con perspectiva cónica

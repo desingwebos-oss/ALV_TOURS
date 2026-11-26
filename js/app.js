@@ -143,11 +143,7 @@ function trackerBuses(){                    // ventana "Ubicación de los buses"
   d.addEventListener('close', () => clearInterval(liveTimer));
 }
 
-function seccionComentarios(){
-  const sec = h('section', {class:'seccion-comentarios bus-card', id:'comentarios'},
-    titulo('💬 OPINIONES Y MEJORAS DE LA APP'),
-    h('p', {}, '¡Tu opinión nos ayuda a mejorar la experiencia en los viajes y en esta app! Cuéntanos tus sugerencias o qué función te gustaría tener.')
-  );
+function modalOpiniones(){
   const inpNombre = h('input', {class:'campo', placeholder:'Tu nombre o apodo (opcional)', maxlength:'50', autocomplete:'nickname'});
   const txtMensaje = h('textarea', {class:'campo area', rows:'3', maxlength:'500', placeholder:'¿Cómo podemos mejorar la app o la experiencia del viaje?'});
   const msgEst = h('p', {class:'msg'});
@@ -196,9 +192,12 @@ function seccionComentarios(){
     h('button', {class:'btn naranja', type:'button', onclick:enviar}, 'PUBLICAR OPINIÓN')
   );
 
-  sec.append(form, listaCont);
+  modal(h('h3', {}, '💬 OPINIONES Y MEJORAS'),
+    h('p', {}, '¡Tu opinión nos ayuda a mejorar la experiencia en los viajes y en esta app! Déjanos tus sugerencias o ideas:'),
+    form,
+    listaCont
+  );
   cargarComentarios();
-  return sec;
 }
 
 const pieza = (clase, src) => h('img', {class:'pz ' + clase, src, alt:'', loading:'lazy'});
@@ -225,9 +224,8 @@ function inicio(){
       const u = (f.lineup_instagram || {})[n];            // usuario de Instagram (solo letras, números, . y _)
       return h('li', {}, /^[A-Za-z0-9._]{1,30}$/.test(u || '') ? h('a', {href:'https://www.instagram.com/' + u + '/', target:'_blank', rel:'noopener noreferrer', 'aria-label':n + ' en Instagram'}, n) : n); }))) : null;
   const avisos = cfg.news.length ? h('section', {class:'avisos'}, titulo('AVISOS DEL VIAJE'), h('div', {class:'muro'}, ...cfg.news.map(tarjeta))) : null;
-  const comentarios = seccionComentarios();
   const lineup = destacados.length ? h('section', {class:'lineup'}, titulo('LINEUP'), carrusel(destacados)) : null;
-  $app.replaceChildren(...[ticker(cfg.news), desplegable, hero, avisos, comentarios, lineup].filter(Boolean));
+  $app.replaceChildren(...[ticker(cfg.news), desplegable, hero, avisos, lineup].filter(Boolean));
 }
 /* ---------- Menú lateral (3 rayitas): seleccionar asiento por autobús ---------- */
 function menuLateral(){
@@ -238,7 +236,7 @@ function menuLateral(){
         h('button', {class:'cerrar', type:'button', 'aria-label':'Cerrar menú', onclick:() => d.close()}, '✕')),
       h('ul', {class:'menu-lista'},
         h('li', {}, h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); abrirWallet(cfg); }}, h('b', {}, '🎟 Mi reserva'), h('small', {}, 'Ver mi folio'))),
-        h('li', {}, h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); document.getElementById('comentarios')?.scrollIntoView({behavior:'smooth'}); }}, h('b', {}, '💬 Opiniones y Mejoras'), h('small', {}, 'Dejar sugerencia')))),
+        h('li', {}, h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); modalOpiniones(); }}, h('b', {}, '💬 Opiniones y Mejoras'), h('small', {}, 'Buzón de sugerencias')))),
       h('p', {class:'menu-sub'}, 'Elige tu autobús'),
       h('ul', {class:'menu-lista'}, ...cfg.buses.map(b => h('li', {},
         h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); modalBus(b); }},

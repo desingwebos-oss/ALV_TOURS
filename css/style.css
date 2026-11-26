@@ -1,8 +1,9 @@
 /* ALV Tours · look festival de pueblo (jipioso / tribal) en tonos claros.
    Los colores se sobreescriben desde festival.json (config-loader.js). Sin estilos en línea (CSP). */
 :root{--naranja:#F7931E;--azul:#2FB6D5;--crema:#FFF5DF;--amarillo:#FFC83D;--rosa:#F0508C;--verde:#58B368;--tinta:#2A1A10;--papel:#FFFBF0}
+html,body{margin:0;padding:0;width:100%;max-width:100vw;overflow-x:hidden}
 *{box-sizing:border-box}
-body{margin:0;color:var(--tinta);font:700 15px/1.45 system-ui,sans-serif;padding-bottom:24px;background-color:var(--crema);
+body{color:var(--tinta);font:700 15px/1.45 system-ui,sans-serif;padding-bottom:24px;background-color:var(--crema);
   background-image:radial-gradient(rgba(42,26,16,.09) 1.4px,transparent 1.7px);background-size:22px 22px}
 .marca,h1,h2,h3{font-family:'Shrikhand',Georgia,serif;font-weight:400;letter-spacing:.3px;line-height:1.1}
 h1{font-size:40px;color:var(--naranja);text-shadow:3px 3px 0 var(--tinta);margin:.2em 0}
@@ -37,9 +38,9 @@ main{max-width:1100px;margin:auto;padding:44px 16px 16px}
 .acciones{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
 
 /* títulos de sección con greca */
-.titulo-sec{display:flex;align-items:center;gap:12px;margin:30px 0 14px}
-.titulo-sec h2{margin:0;color:var(--naranja);text-shadow:2px 2px 0 var(--tinta);font-size:26px;white-space:nowrap}
-.greca{flex:1;height:16px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='16' viewBox='0 0 28 16'%3E%3Cpath d='M0 13L7 3L14 13L21 3L28 13' fill='none' stroke='%232A1A10' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E") repeat-x center/28px 16px}
+.titulo-sec{display:flex;align-items:center;gap:10px;margin:28px 0 14px;max-width:100%;overflow:hidden}
+.titulo-sec h2{margin:0;color:var(--naranja);text-shadow:2px 2px 0 var(--tinta);font-size:clamp(17px,5.2vw,24px);white-space:normal;line-height:1.2;word-break:break-word}
+.greca{flex:1;min-width:20px;height:16px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='16' viewBox='0 0 28 16'%3E%3Cpath d='M0 13L7 3L14 13L21 3L28 13' fill='none' stroke='%232A1A10' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E") repeat-x center/28px 16px}
 
 /* cinta de novedades */
 .ticker{display:flex;align-items:stretch;background:var(--naranja);border:4px solid var(--tinta);border-radius:99px;overflow:hidden;margin:0 0 22px;box-shadow:5px 5px 0 var(--tinta)}
@@ -86,7 +87,7 @@ main{max-width:1100px;margin:auto;padding:44px 16px 16px}
 .btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--tinta)}
 .btn.negro{background:var(--tinta);color:var(--amarillo)}.btn.naranja{background:var(--naranja);color:var(--tinta)}.btn[hidden]{display:none}
 .campo{width:100%;margin:6px 0;padding:13px 18px;border:3px solid var(--tinta);border-radius:99px;font:900 14px system-ui;background:#fff;color:var(--tinta)}
-dialog.modal{max-width:520px;width:92%;margin:auto;color:var(--tinta)}dialog::backdrop{background:rgba(42,26,16,.7)}
+dialog.modal{max-width:520px;width:92%;max-height:88vh;overflow-y:auto;margin:auto;color:var(--tinta)}dialog::backdrop{background:rgba(42,26,16,.7)}
 .cerrar{float:right;border:3px solid var(--tinta);border-radius:50%;background:#fff;width:34px;height:34px;cursor:pointer}
 .msg{color:#b00020;min-height:1.2em}
 

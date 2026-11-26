@@ -1,7 +1,6 @@
 /* Pantalla de arranque ALV Tours: el logo se arma y se deshace en remolino (js/splash.js).
    Mismo amarillo que el icono y que background_color del manifest, para que la transición desde el arranque del sistema sea continua. */
-#splash{position:fixed;inset:0;z-index:9999;background:#FFC83D;transition:opacity .4s ease;touch-action:none;animation:splash-seguro .4s 6s forwards}
-#splash canvas{display:block;width:100%;height:100%}
+#splash{position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;max-width:100%;height:100vh;height:100dvh;z-index:9999;background:#FFC83D;transition:opacity .4s ease;touch-action:none;overflow:hidden;animation:splash-seguro .4s 6s forwards}
+#splash canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
 #splash.fuera{opacity:0;pointer-events:none}
-/* Seguro: si el script no corre, la pantalla se quita sola a los 6 s y nunca bloquea la app. */
 @keyframes splash-seguro{to{opacity:0;visibility:hidden;pointer-events:none}}
