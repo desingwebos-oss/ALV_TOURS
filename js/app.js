@@ -377,9 +377,23 @@ function reserva(id){
 
 /* ---------- PANTALLA 3: panel de administrador (#/admin) ---------- */
 const ETIQUETAS = ['AVISO', 'ITINERARIO', 'URGENTE', 'ABORDAJE', 'LINEUP', 'CLIMA'];
-let chkCtrl = null;
+let chkCtrl = null, audioCtx = null;
 
-function checkinAdmin(box, token){
+function sonidoBeep(exito = true){
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.frequency.value = exito ? 880 : 330;
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.25);
+  } catch {}
+  try { if (navigator.vibrate) navigator.vibrate(exito ? [80, 50, 80] : 300); } catch {}
+}
+
+function checkinAdmin(box, token, alExpirar){
   const visor = h('div', {class:'visor-camara'});
   visor.hidden = true;
   const video = h('video', {class:'video-camara', playsinline:'', muted:''});
@@ -390,23 +404,9 @@ function checkinAdmin(box, token){
   const btnScan = h('button', {class:'btn naranja', type:'button'}, '📷 ABRIR ESCÁNER QR');
   const btnBuscar = h('button', {class:'btn negro', type:'button'}, 'VALIDAR FOLIO');
   const msgEst = h('p', {class:'msg'});
-  const resBox = h('div', {});
   const statsBox = h('div', {class:'checkin-stats'});
 
-  let stream = null, scanTimer = null, escaneando = false, ultimoFolio = '', cooldown = 0;
-
-  function sonidoBeep(exito = true){
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator(), gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = exito ? 880 : 330;
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
-      osc.start(); osc.stop(ctx.currentTime + 0.25);
-    } catch {}
-    try { if (navigator.vibrate) navigator.vibrate(exito ? [80, 50, 80] : 300); } catch {}
-  }
+  let stream = null, scanTimer = null, escaneando = false, cooldown = 0, abiertos = 0, procesando = false, detector = null;
 
   async function actualizarStats(){
     try {
@@ -425,48 +425,47 @@ function checkinAdmin(box, token){
     } catch {}
   }
 
-  async function procesarCheckin(folio, accion = 'checkin', forzar = false){
-    const f = String(folio || '').trim().toUpperCase();
-    if(!f) return msgEst.textContent = 'Escribe o escanea un folio';
-    msgEst.textContent = 'Verificando en Supabase…';
-    try {
-      const resp = await api.adminCheckin(f, token, accion, forzar);
-      sonidoBeep(!resp.ya_validado);
-      msgEst.textContent = '';
-      mostrarResultado(resp);
-      actualizarStats();
-    } catch(e) {
-      sonidoBeep(false);
-      msgEst.textContent = e.message || 'Error al validar boleto';
-      resBox.replaceChildren(h('div', {class:'checkin-res error'},
-        h('h4', {class:'checkin-titulo-res'}, '❌ BOLETO NO ENCONTRADO'),
-        h('p', {}, `Folio: "${f}". Verifica que el folio esté bien escrito o pertenezca a este evento.`)
-      ));
-    }
+  // Modal de resultado: éxito (verde), ya escaneado (amarillo), error (rojo) o check-in deshecho (azul).
+  // Mientras está abierto el escáner se pausa para no leer dos veces el mismo boleto.
+  function modalCheckin(tipo, titulo, sub, res = null){
+    const icono = {exito:'✅', alerta:'⚠️', error:'❌', deshecho:'↩️'}[tipo];
+    const bus = res ? (busDe({bus_id:res.bus_id}) || {nombre:res.bus_id || 'Autobús'}) : null;
+    const fila = (et, val) => h('div', {class:'res-fila'}, h('small', {}, et), h('b', {}, val));
+    const asientos = res ? h('div', {class:'res-fila'}, h('small', {}, 'ASIENTOS'), h('div', {class:'badge-asientos'}, ...(res.seats || []).map(s => h('span', {class:'badge-asiento'}, '#' + s)))) : null;
+    const puedeDeshacer = res && (tipo === 'exito' || tipo === 'alerta');
+    const d = modal(h('div', {class:'res-icono', 'aria-hidden':'true'}, icono), h('h3', {}, titulo), h('p', {class:'res-sub'}, sub),
+      ...(res ? [fila('PASAJERO', res.name || '-'), fila('FOLIO', res.folio), fila('AUTOBÚS', bus.nombre), asientos,
+        fila('ABORDAJE', res.boarding || 'No especificado'), fila('CELULAR', res.phone || '-')] : []),
+      h('div', {class:'acciones'},
+        h('button', {class:'btn naranja', type:'button', onclick:() => d.close()}, '▶ SIGUIENTE BOLETO'),
+        puedeDeshacer ? h('button', {class:'btn', type:'button', onclick:() => { d.close(); procesarCheckin(res.folio, 'revert'); }}, '↩ DESHACER CHECK-IN') : null));
+    d.classList.add('res-modal', tipo); d.setAttribute('role', tipo === 'error' ? 'alertdialog' : 'dialog'); d.setAttribute('aria-label', titulo);
+    d.addEventListener('click', e => { if(e.target === d) d.close(); });          // tocar fuera también cierra
+    abiertos++; sonidoBeep(tipo === 'exito' || tipo === 'deshecho');
+    d.addEventListener('close', () => { abiertos--; cooldown = Date.now() + 1500; inpFolio.value = ''; });
+    return d;
   }
 
-  function mostrarResultado(resp){
-    const res = resp.reservation || {};
-    const bInfo = busDe({bus_id: res.bus_id}) || {nombre: res.bus_id || 'Autobús'};
-    const ya = resp.ya_validado;
-    const rev = resp.revertido;
-    const hora = resp.checked_in_at ? new Date(resp.checked_in_at).toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : 'Ahora';
-
-    const badges = (res.seats || []).map(s => h('span', {class:'badge-asiento'}, '#' + s));
-    const btnRevertir = h('button', {class:'btn', type:'button', onclick:() => procesarCheckin(res.folio, 'revert')}, '↩ Deshacer Check-in');
-    const btnSig = h('button', {class:'btn naranja', type:'button', onclick:() => { resBox.replaceChildren(); inpFolio.value = ''; inpFolio.focus(); }}, '▶ Siguiente boleto');
-
-    resBox.replaceChildren(h('div', {class:'checkin-res ' + (rev ? '' : ya ? 'alerta' : 'exito')},
-      h('h4', {class:'checkin-titulo-res'}, rev ? '↩ CHECK-IN DESHECHO' : ya ? '⚠️ ¡ATENCIÓN: BOLETO YA ESCANEADO PREVIAMENTE!' : '✅ ¡CHECK-IN EXITOSO!'),
-      h('p', {}, ya && !rev ? `Este boleto YA había hecho check-in a las ${hora}. Cuidado con boletos duplicados.` : `Asientos validados en Supabase a las ${hora}.`),
-      h('p', {}, h('b', {}, 'Folio: '), res.folio),
-      h('p', {}, h('b', {}, 'Pasajero: '), res.name),
-      h('p', {}, h('b', {}, 'Autobús: '), bInfo.nombre),
-      h('div', {}, h('b', {}, 'Asientos reservados: '), h('div', {class:'badge-asientos'}, ...badges)),
-      h('p', {}, h('b', {}, 'Punto de abordaje: '), res.boarding || 'No especificado'),
-      h('p', {}, h('b', {}, 'Teléfono: '), res.phone || '-'),
-      h('div', {class:'acciones'}, btnSig, !rev ? btnRevertir : null)
-    ));
+  async function procesarCheckin(folio, accion = 'checkin'){
+    const f = String(folio || '').trim().toUpperCase();
+    if(!f) return void (msgEst.textContent = 'Escribe o escanea un folio');
+    if(procesando) return;
+    if(!/^[A-Z0-9-]{1,30}$/.test(f)){ msgEst.textContent = ''; return void modalCheckin('error', 'QR NO VÁLIDO', 'Este código no es un boleto de ALV Tours.'); }
+    procesando = true; msgEst.textContent = 'Verificando en Supabase…';
+    try {
+      const resp = await api.adminCheckin(f, token, accion);
+      msgEst.textContent = '';
+      const res = resp.reservation || {};
+      const hora = resp.checked_in_at ? new Date(resp.checked_in_at).toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : 'ahora';
+      if(resp.revertido) modalCheckin('deshecho', 'CHECK-IN DESHECHO', 'El boleto quedó otra vez como pendiente de abordar.', res);
+      else if(resp.ya_validado) modalCheckin('alerta', 'BOLETO YA ESCANEADO', `Este boleto ya hizo check-in a las ${hora}. Cuidado con boletos duplicados.`, res);
+      else modalCheckin('exito', '¡CHECK-IN EXITOSO!', `Asientos validados en Supabase a las ${hora}`, res);
+    } catch(e) {
+      msgEst.textContent = '';
+      if(e.status === 401) return void (alExpirar && alExpirar());
+      modalCheckin('error', e.status === 404 ? 'BOLETO NO ENCONTRADO' : 'NO SE PUDO VALIDAR',
+        e.status === 404 ? `Folio "${f}": verifica que esté bien escrito o que sea de este evento.` : (e.message || 'Revisa tu conexión e intenta de nuevo.'));
+    } finally { procesando = false; actualizarStats(); }
   }
 
   async function iniciarCamara(){
@@ -503,11 +502,11 @@ function checkinAdmin(box, token){
 
   async function bucleEscaneo(){
     if(!escaneando) return;
-    if(video.readyState >= video.HAVE_CURRENT_DATA && Date.now() > cooldown){
+    if(video.readyState >= video.HAVE_CURRENT_DATA && Date.now() > cooldown && !abiertos && !procesando){
       let textoDetectado = null;
       if('BarcodeDetector' in window){
         try {
-          const detector = new window.BarcodeDetector({formats:['qr_code']});
+          detector = detector || new window.BarcodeDetector({formats:['qr_code']});
           const barcodes = await detector.detect(video);
           if(barcodes && barcodes.length && barcodes[0].rawValue) textoDetectado = barcodes[0].rawValue;
         } catch {}
@@ -522,15 +521,10 @@ function checkinAdmin(box, token){
           if(code && code.data) textoDetectado = code.data;
         } catch {}
       }
-
-      if(textoDetectado){
+      if(textoDetectado && escaneando && !abiertos && !procesando){
         const f = textoDetectado.trim().toUpperCase();
-        if(f !== ultimoFolio || Date.now() > cooldown){
-          ultimoFolio = f;
-          cooldown = Date.now() + 3500;
-          inpFolio.value = f;
-          procesarCheckin(f);
-        }
+        inpFolio.value = f.slice(0, 30);
+        procesarCheckin(f);
       }
     }
     scanTimer = setTimeout(bucleEscaneo, 200);
@@ -541,22 +535,20 @@ function checkinAdmin(box, token){
   inpFolio.addEventListener('keydown', e => { if(e.key === 'Enter') procesarCheckin(inpFolio.value); });
 
   box.replaceChildren(
-    h('h3', {}, '📷 ESCANEAR QR / CHECK-IN DE BOLETOS'),
-    h('p', {}, 'Valida los asientos reservados al abordar. Escanea el código QR del boleto del pasajero con la cámara o ingresa su folio para registrar el check-in en Supabase:'),
+    h('h3', {}, '📷 ESCANEAR QR / CHECK-IN'),
+    h('p', {}, 'Valida los asientos reservados al abordar. Escanea el QR del boleto con la cámara o escribe el folio para registrar el check-in en Supabase:'),
     statsBox,
     h('div', {class:'acciones'}, btnScan),
     visor,
-    h('div', {style:'margin-top:12px'}, inpFolio),
+    h('div', {class:'sep-arriba'}, inpFolio),
     h('div', {class:'acciones'}, btnBuscar),
-    msgEst,
-    resBox
+    msgEst
   );
 
-  actualizarStats();
-  return { detener: detenerCamara };
+  return { detener: detenerCamara, refrescar: actualizarStats };
 }
 
-async function adminOpiniones(box, token){
+async function adminOpiniones(box, token, alExpirar){
   const msg = h('p', {class:'msg'}), lista = h('div', {class:'adm-lista'});
   box.replaceChildren(h('h3', {}, '💬 OPINIONES DE LOS USUARIOS'), msg, lista);
   try {
@@ -570,8 +562,8 @@ async function adminOpiniones(box, token){
         h('div', {class:'acciones'},
           h('button', {class:'btn negro', onclick:async () => {
             if(!confirm('¿Eliminar esta opinión?')) return;
-            try { await api.adminDeleteFeedback(c.id, token); adminOpiniones(box, token); }
-            catch(e) { msg.textContent = e.message; }
+            try { await api.adminDeleteFeedback(c.id, token); adminOpiniones(box, token, alExpirar); }
+            catch(e) { if(e.status === 401 && alExpirar) alExpirar(); else msg.textContent = e.message; }
           }}, 'BORRAR'))
       ));
     });
@@ -579,25 +571,48 @@ async function adminOpiniones(box, token){
 }
 
 function admin(){
-  let token = null;
-  const box = h('div', {class:'bus-card'}), trk = h('div', {class:'bus-card'}), chk = h('div', {class:'bus-card checkin-card'}), fdb = h('div', {class:'bus-card'});
-  $app.replaceChildren(...[h('a', {href:'#/'}, '← Ver sitio'), h('h2', {}, 'PANEL ADMIN'), box].filter(Boolean));
+  let token = null, abierta = null;
+  const login = h('div', {class:'bus-card'}), menu = h('div', {class:'adm-menu'});
+  // Cada sección vive en su propio contenedor y se muestra dentro de un modal
+  const box = h('div'), trk = h('div'), chk = h('div'), fdb = h('div');
+  const cabecera = () => [h('a', {href:'#/'}, '← Ver sitio'), h('h2', {}, 'PANEL ADMIN')];
+  $app.replaceChildren(...cabecera(), login);
   pasoKey();
+
+  function cerrarSeccion(){ if(abierta && abierta.open) abierta.close(); }
+  function abrirSeccion(contenido, alCerrar){
+    cerrarSeccion();
+    const d = abierta = modal(contenido);
+    d.classList.add('adm-modal');
+    d.addEventListener('close', () => { if(abierta === d) abierta = null; if(alCerrar) alCerrar(); pintarMenu(); });
+    return d;
+  }
+  const expira = () => pasoKey('Sesión expirada, escribe la KEY otra vez.');
+  function pintarMenu(){
+    const op = (ico, tit, sub, fn) => h('button', {class:'adm-op', type:'button', onclick:fn},
+      h('span', {class:'adm-ico', 'aria-hidden':'true'}, ico), h('b', {}, tit), h('small', {}, sub));
+    menu.replaceChildren(
+      op('📷', 'Check-in QR', 'Escanear boletos', () => { abrirSeccion(chk, () => chkCtrl && chkCtrl.detener()); chkCtrl && chkCtrl.refrescar(); }),
+      op('📰', 'Noticias', 'Publicar y editar avisos', () => { panel(); abrirSeccion(box); }),
+      op('💬', 'Opiniones', 'Buzón de los usuarios', () => { adminOpiniones(fdb, token, expira); abrirSeccion(fdb); }),
+      cfg.festival.tracker === true ? op('📍', 'Ubicación del bus', gps ? '🟢 Transmitiendo' : 'Sin transmitir', () => abrirSeccion(trk)) : null);
+  }
+
   function pasoKey(m = ''){
+    cerrarSeccion(); if(chkCtrl){ chkCtrl.detener(); chkCtrl = null; }
+    $app.replaceChildren(...cabecera(), login);
     const inp = h('input', {type:'password', class:'campo', placeholder:'KEY de administrador', maxlength:'64', autocomplete:'current-password'}), msg = h('p', {class:'msg'}, m);
     const ir = async () => {
       try {
         token = (await api.validateKey('admin', inp.value.trim())).token;
         inp.value = '';
-        $app.replaceChildren(...[h('a', {href:'#/'}, '← Ver sitio'), h('h2', {}, 'PANEL ADMIN'), chk, box, fdb, cfg.festival.tracker === true ? trk : null].filter(Boolean));
-        panel();
-        tracker();
-        chkCtrl = checkinAdmin(chk, token);
-        adminOpiniones(fdb, token);
+        $app.replaceChildren(...cabecera(), h('p', {class:'live-estado'}, 'Elige una opción:'), menu);
+        pintarMenu(); tracker();
+        chkCtrl = checkinAdmin(chk, token, expira);
       } catch(e) { msg.textContent = e.message; }
     };
     inp.addEventListener('keydown', e => { if(e.key === 'Enter') ir(); });
-    box.replaceChildren(h('h3', {}, 'ENTRAR'), inp, msg, h('button', {class:'btn negro', onclick:ir}, 'ENTRAR'));
+    login.replaceChildren(h('h3', {}, 'ENTRAR'), inp, msg, h('button', {class:'btn negro', onclick:ir}, 'ENTRAR'));
   }
   function tracker(){                       // compartir la ubicación GPS de este celular como la de un bus
     const sel = h('select', {class:'campo'}, ...cfg.buses.map(b => h('option', {value:b.id}, b.nombre)));
@@ -640,7 +655,7 @@ function admin(){
       lista.append(h('article', {class:'adm-item' + (n.activo ? '' : ' oculto')},
         h('div', {class:'meta'}, h('span', {class:'tag ' + etqClase(n.etiqueta)}, n.etiqueta), busChip(n), fechaOk(n.fecha) ? h('time', {}, fmt(n.fecha)) : null),
         h('h3', {}, (n.fijada ? '📌 ' : '') + n.titulo), h('p', {}, n.texto),
-        h('p', {style:'font-size:12px;opacity:0.8;margin:4px 0'}, 'Reacciones: ' + reaccInfo),
+        h('p', {class:'reacc-info'}, 'Reacciones: ' + reaccInfo),
         h('div', {class:'acciones'},
           h('button', {class:'btn', onclick:() => formulario(n)}, 'EDITAR'),
           h('button', {class:'btn', onclick:() => guardar({...n, activo:!n.activo}, msg)}, n.activo ? 'OCULTAR' : 'MOSTRAR'),

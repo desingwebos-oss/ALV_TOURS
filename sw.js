@@ -1,7 +1,7 @@
 // Service worker de ALV Tours: permite instalar la app y abrirla sin conexión.
 // Estrategia "red primero": siempre intenta traer lo más nuevo (avisos, buses, lineup) y solo usa la copia guardada si no hay internet.
 // Las llamadas a Supabase (otro dominio) NO se tocan: asientos y reservas siempre van directo al servidor.
-const V = 'alv-v8';
+const V = 'alv-v9';
 const BASE = ['./', 'index.html', 'manifest.json', 'css/style.css', 'css/escenario.css', 'css/splash.css', 'css/wallet.css', 'js/qr.js', 'js/jsqr.js', 'js/wallet.js', 'js/splash.js', 'js/app.js', 'js/api.js', 'js/seats.js', 'js/mapa.js',
   'js/config-loader.js', 'js/pwa.js', 'js/ajustes.js', 'img/escenario.jpg', 'config/festival.json', 'config/buses.json', 'config/news.json',
   'img/logo-alv.png', 'img/icon-192.png', 'img/icon-512.png', 'img/apple-touch-icon.png', 'img/collage-sol.webp', 'img/collage-luna.webp', 'img/collage-titulo.webp',

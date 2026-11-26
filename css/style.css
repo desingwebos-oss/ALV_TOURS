@@ -218,7 +218,7 @@ dialog.menu-lateral[open]{animation:menu-entra .22s ease-out}
 .video-camara{width:100%;height:100%;object-fit:cover}
 .reticula-qr{position:absolute;width:65%;height:65%;border:3px dashed var(--amarillo);border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.5);pointer-events:none}
 .reticula-linea{position:absolute;top:0;left:0;right:0;height:3px;background:var(--naranja);box-shadow:0 0 8px var(--naranja);animation:escanear 1.8s ease-in-out infinite alternate}
-@keyframes escanear{from:top:5%}to{top:95%}}
+@keyframes escanear{from{top:5%}to{top:95%}}
 .checkin-res{border:3px solid var(--tinta);border-radius:20px;padding:14px;margin:14px 0}
 .checkin-res.exito{background:#e7f8e8;border-color:#2a7534}
 .checkin-res.alerta{background:#fff3cd;border-color:#856404}
@@ -228,3 +228,31 @@ dialog.menu-lateral[open]{animation:menu-entra .22s ease-out}
 .badge-asiento{background:var(--naranja);color:var(--tinta);border:2px solid var(--tinta);border-radius:8px;padding:2px 8px;font-weight:900;font-size:14px}
 .checkin-stats{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .stat-chip{background:var(--crema);border:2px solid var(--tinta);border-radius:99px;padding:4px 12px;font-size:12px;font-weight:800}
+
+/* Panel admin: menú de opciones (cada una abre un modal) */
+.sep-arriba{margin-top:12px}.reacc-info{font-size:12px;opacity:.8;margin:4px 0}
+.adm-menu{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:8px 0 22px}
+.adm-op{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:132px;text-align:left;cursor:pointer;color:var(--tinta);background:var(--papel);
+  border:4px solid var(--tinta);border-radius:24px 30px 26px 32px/28px 24px 30px 24px;box-shadow:6px 6px 0 var(--tinta);padding:14px 14px 12px;font:inherit;transition:transform .12s,box-shadow .12s}
+.adm-op:nth-child(4n+1){background:#FFE1B3}.adm-op:nth-child(4n+2){background:#CFEFF7}.adm-op:nth-child(4n+3){background:#FFD3E3}.adm-op:nth-child(4n+4){background:#D6F0D9}
+.adm-op:hover{transform:translate(-1px,-1px);box-shadow:8px 8px 0 var(--tinta)}
+.adm-op:active{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--tinta)}
+.adm-ico{font-size:32px;line-height:1}
+.adm-op b{font:400 19px/1.1 'Shrikhand',Georgia,serif}
+.adm-op small{font:700 12px system-ui}
+dialog.adm-modal{max-width:560px}
+
+/* Modal de resultado del check-in (éxito / ya escaneado / error / deshecho) */
+dialog.res-modal{text-align:center;max-width:420px}
+dialog.res-modal.exito{border-color:#2a7534}dialog.res-modal.alerta{border-color:#856404}dialog.res-modal.error{border-color:#721c24}
+.res-icono{width:88px;height:88px;margin:4px auto 10px;display:grid;place-items:center;font-size:46px;border:4px solid var(--tinta);border-radius:50%;box-shadow:4px 4px 0 var(--tinta);background:var(--azul)}
+.res-modal.exito .res-icono{background:#7fd68b}.res-modal.alerta .res-icono{background:var(--amarillo)}.res-modal.error .res-icono{background:#f28b95}
+.res-modal h3{font-size:24px;margin:.1em 0}
+.res-sub{font-weight:700;margin:.3em 0 .8em}
+.res-fila{display:grid;gap:1px;text-align:left;background:#fff;border:3px solid var(--tinta);border-radius:14px;padding:6px 12px;margin:8px 0}
+.res-fila small{font:800 10px system-ui;letter-spacing:1px;color:#7a5a3a}
+.res-fila b{font:800 17px/1.2 system-ui;overflow-wrap:anywhere}
+.res-modal .acciones{justify-content:center}
+dialog.res-modal[open]{animation:res-pop .22s ease-out}
+@keyframes res-pop{from{transform:scale(.86);opacity:0}}
+@media(prefers-reduced-motion:reduce){dialog.res-modal[open]{animation:none}.adm-op{transition:none}}
