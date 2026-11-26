@@ -80,3 +80,20 @@ En el panel `#/admin`, al publicar un aviso puedes elegir el autobús que lo emi
 - Al reservar, el pase queda guardado en el celular (localStorage) y se ve sin internet. Botón **🎟 MI RESERVA** en la portada y en el menú ☰.
 - Si cambia de celular o borra datos: **Mi reserva** → celular + nombre → recupera el pase. Se puede **guardar como imagen** (con QR del folio).
 - Seguridad: la consulta exige celular + nombre (o folio + celular); 5 fallos = bloqueo de 15 min por IP. No hay cambios en la base de datos: solo redesplegar `supabase functions deploy api --no-verify-jwt`.
+
+## Nuevas funciones: Comentarios, Reacciones y Check-in QR
+1. **Sección de comentarios y sugerencias:**
+   - Sección en la portada y acceso directo desde el menú de 3 rayas para que los usuarios publiquen opiniones sobre cómo mejorar la app o la logística del viaje.
+   - El admin puede revisar o moderar comentarios desde el panel `#/admin`.
+2. **Reacciones a los avisos:**
+   - Los usuarios pueden reaccionar a cada aviso publicado por el admin con tres emociones: ❤️ Me encanta (corazón), 😡 Me enoja, 😢 Me entristece.
+   - Los contadores se guardan y actualizan tanto en Supabase como en la interfaz de usuario.
+3. **Escaneo de QR y Check-in para el Administrador:**
+   - En el panel `#/admin`, sección **📷 ESCANEAR QR / CHECK-IN DE BOLETOS**.
+   - Permite encender la cámara del celular para escanear el código QR del boleto del pasajero en tiempo real (con sonido de confirmación, retícula de escaneo e identificación de asientos validados).
+   - También permite búsqueda manual por Folio (ej. `TC-1-2`).
+   - Alerta si un boleto ya fue escaneado previamente para evitar duplicados o fraudes.
+   - Registra el estado `checked_in: true` y la hora `checked_in_at` en Supabase.
+4. **Instalación en Supabase:**
+   - En Supabase > SQL Editor, ejecuta el archivo `supabase/agregar_comentarios_y_reacciones_y_checkin.sql`.
+   - Vuelve a desplegar la función: `supabase functions deploy api --no-verify-jwt`.

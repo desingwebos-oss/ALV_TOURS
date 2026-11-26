@@ -8,7 +8,8 @@ create table seats (bus_id text, seat int check (seat between 1 and 99), status 
   session_id uuid, held_until timestamptz, primary key (bus_id, seat));
 create table reservations (folio text primary key, bus_id text not null,
   name text not null check (char_length(name) between 3 and 80), phone text not null unique check (phone ~ '^[0-9]{10}$'),
-  address text check (char_length(address) <= 120), boarding text, seats int[] not null, consent_at timestamptz not null, created_at timestamptz default now());
+  address text check (char_length(address) <= 120), boarding text, seats int[] not null, consent_at timestamptz not null,
+  created_at timestamptz default now(), checked_in boolean not null default false, checked_in_at timestamptz);
 alter table bus_keys enable row level security; alter table attempts enable row level security; alter table sessions enable row level security;
 alter table seats enable row level security; alter table reservations enable row level security;
 
@@ -44,9 +45,43 @@ create table if not exists news (id uuid primary key default gen_random_uuid(),
   titulo text not null check (char_length(titulo) between 1 and 80),
   etiqueta text not null default 'AVISO' check (char_length(etiqueta) <= 20),
   fecha date not null default current_date, fijada boolean not null default false, activo boolean not null default true,
+  bus_id text check (bus_id is null or bus_id ~ '^[A-Za-z0-9_-]{1,32}$'),
   texto text not null default '' check (char_length(texto) <= 200), texto_largo text not null default '' check (char_length(texto_largo) <= 1500),
-  enlace text not null default '', enlace_texto text not null default '', created_at timestamptz default now());
+  enlace text not null default '', enlace_texto text not null default '',
+  reacc_corazon int not null default 0, reacc_enojo int not null default 0, reacc_entristece int not null default 0,
+  created_at timestamptz default now());
 alter table news enable row level security;
+
+-- Comentarios y opiniones de mejora de la app
+create table if not exists app_feedback (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null default 'Pasajero' check (char_length(nombre) between 1 and 60),
+  mensaje text not null check (char_length(mensaje) between 3 and 500),
+  created_at timestamptz not null default now(),
+  activo boolean not null default true
+);
+alter table app_feedback enable row level security;
+
+-- Función atómica para registrar y alternar reacciones en avisos
+create or replace function reaccionar_noticia(p_id uuid, p_reaccion text, p_anterior text)
+returns json language plpgsql as $$
+declare
+  r record;
+begin
+  if p_anterior = 'corazon' then update news set reacc_corazon = greatest(0, reacc_corazon - 1) where id = p_id;
+  elsif p_anterior = 'enojo' then update news set reacc_enojo = greatest(0, reacc_enojo - 1) where id = p_id;
+  elsif p_anterior = 'entristece' then update news set reacc_entristece = greatest(0, reacc_entristece - 1) where id = p_id;
+  end if;
+
+  if p_reaccion = 'corazon' then update news set reacc_corazon = reacc_corazon + 1 where id = p_id;
+  elsif p_reaccion = 'enojo' then update news set reacc_enojo = reacc_enojo + 1 where id = p_id;
+  elsif p_reaccion = 'entristece' then update news set reacc_entristece = reacc_entristece + 1 where id = p_id;
+  end if;
+
+  select reacc_corazon, reacc_enojo, reacc_entristece into r from news where id = p_id;
+  return row_to_json(r);
+end $$;
+revoke all on function reaccionar_noticia from public, anon, authenticated;
 
 -- KEY del administrador (misma tabla que los buses, bus_id = 'admin'). Usa una frase larga; borra el comando del historial después:
 -- insert into bus_keys values ('admin', crypt('TU-FRASE-LARGA-DE-ADMIN', gen_salt('bf', 10)));

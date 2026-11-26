@@ -81,11 +81,58 @@ Deno.serve(async (req) => {
       return out({ token, expires_in: dur });
     }
 
-    // ---------- AVISOS (público: solo lectura de los activos) ----------
+    // ---------- AVISOS (público: lectura con conteo de reacciones) ----------
     if (req.method === "GET" && path === "/news") {
-      const { data } = await db.from("news").select("id,titulo,etiqueta,fecha,fijada,bus_id,texto,texto_largo,enlace,enlace_texto")
-        .eq("activo", true).order("fecha", { ascending: false }).limit(12);
+      const { data } = await db.from("news").select("id,titulo,etiqueta,fecha,fijada,bus_id,texto,texto_largo,enlace,enlace_texto,reacc_corazon,reacc_enojo,reacc_entristece")
+        .eq("activo", true).order("fecha", { ascending: false }).limit(20);
       return out(data || []);
+    }
+
+    // ---------- REACCIONES A AVISOS (❤️ corazon, 😡 enojo, 😢 entristece) ----------
+    if (req.method === "POST" && path === "/news-react") {
+      const { id, reaction, prev } = await req.json().catch(() => ({}));
+      if (!id || typeof id !== "string") return out({ error: "Datos inválidos" }, 400);
+      const valid = ["corazon", "enojo", "entristece", ""];
+      if (!valid.includes(reaction || "") || !valid.includes(prev || "")) return out({ error: "Reacción inválida" }, 400);
+      const { data, error } = await db.rpc("reaccionar_noticia", { p_id: id, p_reaccion: reaction || "", p_anterior: prev || "" });
+      if (error) {
+        const { data: cur } = await db.from("news").select("reacc_corazon,reacc_enojo,reacc_entristece").eq("id", id).maybeSingle();
+        if (cur) {
+          let c = cur.reacc_corazon || 0, e = cur.reacc_enojo || 0, en = cur.reacc_entristece || 0;
+          if (prev === "corazon") c = Math.max(0, c - 1);
+          if (prev === "enojo") e = Math.max(0, e - 1);
+          if (prev === "entristece") en = Math.max(0, en - 1);
+          if (reaction === "corazon") c++;
+          if (reaction === "enojo") e++;
+          if (reaction === "entristece") en++;
+          await db.from("news").update({ reacc_corazon: c, reacc_enojo: e, reacc_entristece: en }).eq("id", id);
+          return out({ reacc_corazon: c, reacc_enojo: e, reacc_entristece: en });
+        }
+        return out({ ok: true });
+      }
+      return out(data || { ok: true });
+    }
+
+    // ---------- COMENTARIOS / OPINIONES DE LA APP (público) ----------
+    if (req.method === "GET" && path === "/feedback") {
+      const { data } = await db.from("app_feedback")
+        .select("id,nombre,mensaje,created_at")
+        .eq("activo", true)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return out(data || []);
+    }
+    if (req.method === "POST" && path === "/feedback") {
+      const b = await req.json().catch(() => ({}));
+      const nom = String(b.nombre || "").trim().slice(0, 50) || "Pasajero viajero";
+      const msg = String(b.mensaje || "").trim().slice(0, 500);
+      if (msg.length < 3) return out({ error: "Escribe tu opinión o sugerencia (mínimo 3 letras)" }, 400);
+      const { data, error } = await db.from("app_feedback")
+        .insert({ nombre: nom, mensaje: msg, activo: true })
+        .select("id,nombre,mensaje,created_at")
+        .single();
+      if (error || !data) return out({ error: "No se pudo guardar tu comentario" }, 400);
+      return out(data);
     }
 
     // ---------- TRACKER (público: solo la última posición del bus; "activo" = actualizada hace <= 2 min) ----------
@@ -165,6 +212,48 @@ Deno.serve(async (req) => {
       if (req.method === "POST" && path === "/admin/pos-stop") {
         const { bus_id } = await req.json(); if (!busOk(bus_id)) return out({ error: "Datos inválidos" }, 400);
         await db.from("bus_pos").delete().eq("bus_id", bus_id);
+        return out({ ok: true });
+      }
+      // Check-in por escaneo de QR (folio) para validar asientos reservados
+      if (req.method === "POST" && path === "/admin/checkin") {
+        const b = await req.json().catch(() => ({}));
+        const folio = String(b.folio || "").trim().toUpperCase();
+        if (!folio) return out({ error: "Folio no proporcionado" }, 400);
+        const { data: res, error } = await db.from("reservations")
+          .select("folio,bus_id,name,phone,seats,boarding,checked_in,checked_in_at,created_at")
+          .ilike("folio", folio)
+          .maybeSingle();
+        if (error || !res) return out({ error: "No se encontró reservación con el folio: " + folio }, 404);
+
+        const accion = b.accion || "checkin";
+        if (accion === "info") {
+          return out({ ok: true, reservation: res, ya_validado: !!res.checked_in });
+        }
+        if (accion === "revert") {
+          await db.from("reservations").update({ checked_in: false, checked_in_at: null }).eq("folio", res.folio);
+          return out({ ok: true, revertido: true, reservation: { ...res, checked_in: false, checked_in_at: null } });
+        }
+
+        const yaEstaba = !!res.checked_in;
+        const ahora = new Date().toISOString();
+        if (!yaEstaba || b.forzar) {
+          await db.from("reservations").update({ checked_in: true, checked_in_at: ahora }).eq("folio", res.folio);
+        }
+        return out({
+          ok: true,
+          ya_validado: yaEstaba,
+          checked_in_at: yaEstaba ? res.checked_in_at : ahora,
+          reservation: { ...res, checked_in: true, checked_in_at: yaEstaba ? res.checked_in_at : ahora }
+        });
+      }
+      if (req.method === "GET" && path === "/admin/checkins-summary") {
+        const { data } = await db.from("reservations").select("folio,bus_id,name,seats,boarding,checked_in,checked_in_at");
+        return out(data || []);
+      }
+      if (req.method === "POST" && path === "/admin/feedback-delete") {
+        const { id } = await req.json().catch(() => ({}));
+        if (typeof id !== "string") return out({ error: "Datos inválidos" }, 400);
+        await db.from("app_feedback").delete().eq("id", id);
         return out({ ok: true });
       }
       return out({ error: "No encontrado" }, 404);

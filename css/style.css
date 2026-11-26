@@ -187,3 +187,43 @@ dialog.menu-lateral[open]{animation:menu-entra .22s ease-out}
 .cartel-lista a{color:inherit;text-decoration:none;font-weight:700}
 .cartel-lista li:has(a){cursor:pointer;transition:transform .12s}.cartel-lista li:has(a):hover{transform:translateY(-2px) rotate(-1deg)}
 .cartel-lista a:hover,.cartel-lista a:focus-visible{text-decoration:underline;outline:none}
+
+/* Reacciones a los avisos */
+.reacciones{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap}
+.btn-reacc{display:inline-flex;align-items:center;gap:4px;background:#fff;border:2.5px solid var(--tinta);border-radius:99px;padding:4px 10px;font:800 12px system-ui;cursor:pointer;color:var(--tinta);box-shadow:2px 2px 0 var(--tinta);transition:all .15s}
+.btn-reacc:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--tinta)}
+.btn-reacc:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--tinta)}
+.btn-reacc.activo{background:var(--amarillo);box-shadow:inset 1px 1px 0 rgba(0,0,0,.2),2px 2px 0 var(--tinta)}
+.btn-reacc.reacc-corazon.activo{background:#ffccd8}
+.btn-reacc.reacc-enojo.activo{background:#ffd0b8}
+.btn-reacc.reacc-entristece.activo{background:#cbe9ff}
+.btn-reacc .reacc-ico{font-size:14px;line-height:1}
+.btn-reacc .reacc-cont{font-weight:900}
+
+/* Sección de comentarios y sugerencias */
+.seccion-comentarios{margin-top:30px}
+.form-comentario{background:#fff;border:3px solid var(--tinta);border-radius:24px;padding:16px;box-shadow:4px 4px 0 var(--tinta);margin-bottom:16px}
+.comentarios-lista{display:grid;gap:12px;margin-top:14px}
+.comentario-card{background:#fff;border:3px solid var(--tinta);border-radius:18px;padding:12px 14px;box-shadow:3px 3px 0 var(--tinta);position:relative}
+.comentario-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.comentario-autor{font-weight:900;font-size:13px;color:var(--naranja)}
+.comentario-fecha{font-size:11px;opacity:.7}
+.comentario-texto{margin:0;font-size:14px;font-weight:600;word-break:break-word}
+.comentario-eliminar{border:2px solid var(--tinta);border-radius:50%;background:#ffd0d0;cursor:pointer;width:24px;height:24px;font-size:11px;font-weight:900;line-height:1}
+
+/* Check-in de Boletos y Asientos (Admin) */
+.checkin-card{background:#fff;border:3px solid var(--tinta);border-radius:24px;padding:16px;box-shadow:4px 4px 0 var(--tinta);margin-bottom:18px}
+.visor-camara{position:relative;width:100%;max-width:400px;margin:12px auto;border:4px solid var(--tinta);border-radius:20px;overflow:hidden;background:#000;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+.video-camara{width:100%;height:100%;object-fit:cover}
+.reticula-qr{position:absolute;width:65%;height:65%;border:3px dashed var(--amarillo);border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.5);pointer-events:none}
+.reticula-linea{position:absolute;top:0;left:0;right:0;height:3px;background:var(--naranja);box-shadow:0 0 8px var(--naranja);animation:escanear 1.8s ease-in-out infinite alternate}
+@keyframes escanear{from:top:5%}to{top:95%}}
+.checkin-res{border:3px solid var(--tinta);border-radius:20px;padding:14px;margin:14px 0}
+.checkin-res.exito{background:#e7f8e8;border-color:#2a7534}
+.checkin-res.alerta{background:#fff3cd;border-color:#856404}
+.checkin-res.error{background:#f8d7da;border-color:#721c24}
+.checkin-titulo-res{font-size:18px;margin:0 0 8px}
+.badge-asientos{display:inline-flex;flex-wrap:wrap;gap:6px;margin:4px 0}
+.badge-asiento{background:var(--naranja);color:var(--tinta);border:2px solid var(--tinta);border-radius:8px;padding:2px 8px;font-weight:900;font-size:14px}
+.checkin-stats{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.stat-chip{background:var(--crema);border:2px solid var(--tinta);border-radius:99px;padding:4px 12px;font-size:12px;font-weight:800}

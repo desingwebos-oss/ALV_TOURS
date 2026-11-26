@@ -27,14 +27,68 @@ const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let carTimer;
 const titulo = t => h('div', {class:'titulo-sec'}, h('h2', {}, t), h('span', {class:'greca'}));
 
+function barraReacciones(n){
+  if(!n || !n.id) return null;
+  const c = h('div', {class:'reacciones', onclick:e => e.stopPropagation()});
+  const reaccs = [
+    {id:'corazon', ico:'❤️', lbl:'Me encanta', prop:'reacc_corazon'},
+    {id:'enojo', ico:'😡', lbl:'Me enoja', prop:'reacc_enojo'},
+    {id:'entristece', ico:'😢', lbl:'Me entristece', prop:'reacc_entristece'}
+  ];
+  let cur = localStorage.getItem('alv.reacc.' + n.id) || '';
+
+  const btns = reaccs.map(r => {
+    const cont = h('span', {class:'reacc-cont'}, String(n[r.prop] || 0));
+    const btn = h('button', {
+      type:'button',
+      class:'btn-reacc reacc-' + r.id + (cur === r.id ? ' activo' : ''),
+      'aria-label': r.lbl,
+      title: r.lbl,
+      onclick: async e => {
+        e.stopPropagation();
+        const prev = cur;
+        const nuevo = cur === r.id ? '' : r.id;
+        cur = nuevo;
+        if(nuevo) localStorage.setItem('alv.reacc.' + n.id, nuevo);
+        else localStorage.removeItem('alv.reacc.' + n.id);
+
+        if(prev && n['reacc_' + prev] != null) n['reacc_' + prev] = Math.max(0, (n['reacc_' + prev] || 0) - 1);
+        if(nuevo && n['reacc_' + nuevo] != null) n['reacc_' + nuevo] = (n['reacc_' + nuevo] || 0) + 1;
+
+        btns.forEach((b, i) => {
+          const item = reaccs[i];
+          b.el.className = 'btn-reacc reacc-' + item.id + (cur === item.id ? ' activo' : '');
+          b.cnt.textContent = String(n[item.prop] || 0);
+        });
+
+        try {
+          const res = await api.reactNews(n.id, nuevo, prev);
+          if(res && typeof res.reacc_corazon === 'number'){
+            n.reacc_corazon = res.reacc_corazon;
+            n.reacc_enojo = res.reacc_enojo;
+            n.reacc_entristece = res.reacc_entristece;
+            btns.forEach((b, i) => { b.cnt.textContent = String(n[reaccs[i].prop] || 0); });
+          }
+        } catch {}
+      }
+    }, h('span', {class:'reacc-ico'}, r.ico), cont);
+    return {el:btn, cnt:cont, id:r.id};
+  });
+
+  c.append(...btns.map(b => b.el));
+  return c;
+}
+
 function detalle(n){
   modal(h('span', {class:'tag ' + etqClase(n.etiqueta)}, n.etiqueta || 'AVISO'), busChip(n), h('h3', {}, n.titulo),
     n.imagen ? h('img', {src:n.imagen, alt:'', class:'foto'}) : null, h('p', {}, n.texto_largo || n.texto),
+    barraReacciones(n),
     /^https:\/\//.test(n.enlace || '') ? h('a', {class:'btn naranja', href:n.enlace, target:'_blank', rel:'noopener noreferrer'}, n.enlace_texto || 'VER MÁS') : null);
 }
 const tarjeta = n => h('article', {class:'noticia bus-card' + (n.fijada ? ' fijada' : ''), tabindex:'0', onclick:() => detalle(n), onkeydown:e => { if(e.key === 'Enter') detalle(n); }},
   h('div', {class:'meta'}, h('span', {class:'tag ' + etqClase(n.etiqueta)}, n.etiqueta || 'AVISO'), busChip(n), fechaOk(n.fecha) ? h('time', {}, fmt(n.fecha)) : null),
-  h('h3', {}, n.titulo), n.imagen ? h('img', {src:n.imagen, alt:''}) : null, h('p', {}, n.texto));
+  h('h3', {}, n.titulo), n.imagen ? h('img', {src:n.imagen, alt:''}) : null, h('p', {}, n.texto),
+  barraReacciones(n));
 
 function ticker(news){                       // cinta de novedades (solo CSS, texto plano)
   const items = news.slice(0, 5).map(n => (busDe(n) ? busDe(n).nombre + ' · ' : '') + (n.etiqueta ? n.etiqueta + ': ' : '') + n.titulo);
@@ -89,6 +143,64 @@ function trackerBuses(){                    // ventana "Ubicación de los buses"
   d.addEventListener('close', () => clearInterval(liveTimer));
 }
 
+function seccionComentarios(){
+  const sec = h('section', {class:'seccion-comentarios bus-card', id:'comentarios'},
+    titulo('💬 OPINIONES Y MEJORAS DE LA APP'),
+    h('p', {}, '¡Tu opinión nos ayuda a mejorar la experiencia en los viajes y en esta app! Cuéntanos tus sugerencias o qué función te gustaría tener.')
+  );
+  const inpNombre = h('input', {class:'campo', placeholder:'Tu nombre o apodo (opcional)', maxlength:'50', autocomplete:'nickname'});
+  const txtMensaje = h('textarea', {class:'campo area', rows:'3', maxlength:'500', placeholder:'¿Cómo podemos mejorar la app o la experiencia del viaje?'});
+  const msgEst = h('p', {class:'msg'});
+  const listaCont = h('div', {class:'comentarios-lista'}, h('p', {class:'live-estado'}, 'Cargando opiniones…'));
+
+  async function cargarComentarios(){
+    try {
+      const items = await api.getFeedback();
+      listaCont.replaceChildren();
+      if(!items || !items.length){
+        listaCont.append(h('p', {class:'live-estado'}, 'Aún no hay opiniones. ¡Sé el primero en compartir tu sugerencia!'));
+        return;
+      }
+      items.forEach(c => {
+        const f = c.created_at ? new Date(c.created_at).toLocaleDateString('es-MX', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '';
+        listaCont.append(h('article', {class:'comentario-card'},
+          h('div', {class:'comentario-cab'},
+            h('span', {class:'comentario-autor'}, c.nombre || 'Pasajero'),
+            f ? h('time', {class:'comentario-fecha'}, f) : null
+          ),
+          h('p', {class:'comentario-texto'}, c.mensaje)
+        ));
+      });
+    } catch {
+      listaCont.replaceChildren(h('p', {class:'live-estado'}, 'No se pudieron cargar las opiniones en este momento.'));
+    }
+  }
+
+  async function enviar(){
+    const m = txtMensaje.value.trim();
+    if(m.length < 3) return msgEst.textContent = 'Escribe tu opinión o sugerencia (mínimo 3 letras)';
+    msgEst.textContent = 'Enviando opinión…';
+    try {
+      await api.sendFeedback(inpNombre.value.trim() || 'Pasajero viajero', m);
+      txtMensaje.value = '';
+      msgEst.textContent = '✅ ¡Muchas gracias por tu opinión!';
+      setTimeout(() => { if(msgEst.textContent.includes('Gracias')) msgEst.textContent = ''; }, 4000);
+      cargarComentarios();
+    } catch(e) {
+      msgEst.textContent = e.message || 'No se pudo enviar tu opinión.';
+    }
+  }
+
+  const form = h('div', {class:'form-comentario'},
+    inpNombre, txtMensaje, msgEst,
+    h('button', {class:'btn naranja', type:'button', onclick:enviar}, 'PUBLICAR OPINIÓN')
+  );
+
+  sec.append(form, listaCont);
+  cargarComentarios();
+  return sec;
+}
+
 const pieza = (clase, src) => h('img', {class:'pz ' + clase, src, alt:'', loading:'lazy'});
 function inicio(){
   const f = cfg.festival, lista = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim()) : [];
@@ -113,8 +225,9 @@ function inicio(){
       const u = (f.lineup_instagram || {})[n];            // usuario de Instagram (solo letras, números, . y _)
       return h('li', {}, /^[A-Za-z0-9._]{1,30}$/.test(u || '') ? h('a', {href:'https://www.instagram.com/' + u + '/', target:'_blank', rel:'noopener noreferrer', 'aria-label':n + ' en Instagram'}, n) : n); }))) : null;
   const avisos = cfg.news.length ? h('section', {class:'avisos'}, titulo('AVISOS DEL VIAJE'), h('div', {class:'muro'}, ...cfg.news.map(tarjeta))) : null;
+  const comentarios = seccionComentarios();
   const lineup = destacados.length ? h('section', {class:'lineup'}, titulo('LINEUP'), carrusel(destacados)) : null;
-  $app.replaceChildren(...[ticker(cfg.news), desplegable, hero, avisos, lineup].filter(Boolean));
+  $app.replaceChildren(...[ticker(cfg.news), desplegable, hero, avisos, comentarios, lineup].filter(Boolean));
 }
 /* ---------- Menú lateral (3 rayitas): seleccionar asiento por autobús ---------- */
 function menuLateral(){
@@ -123,7 +236,9 @@ function menuLateral(){
     h('div', {class:'menu-panel'},
       h('div', {class:'menu-cab'}, h('h2', {}, 'SELECCIONAR ASIENTOS'),
         h('button', {class:'cerrar', type:'button', 'aria-label':'Cerrar menú', onclick:() => d.close()}, '✕')),
-      h('ul', {class:'menu-lista'}, h('li', {}, h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); abrirWallet(cfg); }}, h('b', {}, '🎟 Mi reserva'), h('small', {}, 'Ver mi folio')))),
+      h('ul', {class:'menu-lista'},
+        h('li', {}, h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); abrirWallet(cfg); }}, h('b', {}, '🎟 Mi reserva'), h('small', {}, 'Ver mi folio'))),
+        h('li', {}, h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); document.getElementById('comentarios')?.scrollIntoView({behavior:'smooth'}); }}, h('b', {}, '💬 Opiniones y Mejoras'), h('small', {}, 'Dejar sugerencia')))),
       h('p', {class:'menu-sub'}, 'Elige tu autobús'),
       h('ul', {class:'menu-lista'}, ...cfg.buses.map(b => h('li', {},
         h('button', {class:'menu-item', type:'button', onclick:() => { d.close(); modalBus(b); }},
@@ -264,14 +379,225 @@ function reserva(id){
 
 /* ---------- PANTALLA 3: panel de administrador (#/admin) ---------- */
 const ETIQUETAS = ['AVISO', 'ITINERARIO', 'URGENTE', 'ABORDAJE', 'LINEUP', 'CLIMA'];
+let chkCtrl = null;
+
+function checkinAdmin(box, token){
+  const visor = h('div', {class:'visor-camara'});
+  visor.hidden = true;
+  const video = h('video', {class:'video-camara', playsinline:'', muted:''});
+  const reticula = h('div', {class:'reticula-qr'}, h('div', {class:'reticula-linea'}));
+  visor.append(video, reticula);
+
+  const inpFolio = h('input', {class:'campo', placeholder:'Folio del boleto (ej. TC-1-2)', maxlength:'30', autocomplete:'off'});
+  const btnScan = h('button', {class:'btn naranja', type:'button'}, '📷 ABRIR ESCÁNER QR');
+  const btnBuscar = h('button', {class:'btn negro', type:'button'}, 'VALIDAR FOLIO');
+  const msgEst = h('p', {class:'msg'});
+  const resBox = h('div', {});
+  const statsBox = h('div', {class:'checkin-stats'});
+
+  let stream = null, scanTimer = null, escaneando = false, ultimoFolio = '', cooldown = 0;
+
+  function sonidoBeep(exito = true){
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = exito ? 880 : 330;
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      osc.start(); osc.stop(ctx.currentTime + 0.25);
+    } catch {}
+    try { if (navigator.vibrate) navigator.vibrate(exito ? [80, 50, 80] : 300); } catch {}
+  }
+
+  async function actualizarStats(){
+    try {
+      const r = await api.adminCheckinsSummary(token);
+      statsBox.replaceChildren();
+      if(!r || !r.length) return;
+      const totalAsientos = r.reduce((acc, x) => acc + (x.seats || []).length, 0);
+      const abordados = r.filter(x => x.checked_in).reduce((acc, x) => acc + (x.seats || []).length, 0);
+      statsBox.append(h('span', {class:'stat-chip'}, `Total abordados: ${abordados} / ${totalAsientos} asientos`));
+      cfg.buses.forEach(b => {
+        const delBus = r.filter(x => x.bus_id === b.id);
+        const bTot = delBus.reduce((acc, x) => acc + (x.seats || []).length, 0);
+        const bAbord = delBus.filter(x => x.checked_in).reduce((acc, x) => acc + (x.seats || []).length, 0);
+        if(bTot > 0) statsBox.append(h('span', {class:'stat-chip'}, `${b.nombre}: ${bAbord}/${bTot}`));
+      });
+    } catch {}
+  }
+
+  async function procesarCheckin(folio, accion = 'checkin', forzar = false){
+    const f = String(folio || '').trim().toUpperCase();
+    if(!f) return msgEst.textContent = 'Escribe o escanea un folio';
+    msgEst.textContent = 'Verificando en Supabase…';
+    try {
+      const resp = await api.adminCheckin(f, token, accion, forzar);
+      sonidoBeep(!resp.ya_validado);
+      msgEst.textContent = '';
+      mostrarResultado(resp);
+      actualizarStats();
+    } catch(e) {
+      sonidoBeep(false);
+      msgEst.textContent = e.message || 'Error al validar boleto';
+      resBox.replaceChildren(h('div', {class:'checkin-res error'},
+        h('h4', {class:'checkin-titulo-res'}, '❌ BOLETO NO ENCONTRADO'),
+        h('p', {}, `Folio: "${f}". Verifica que el folio esté bien escrito o pertenezca a este evento.`)
+      ));
+    }
+  }
+
+  function mostrarResultado(resp){
+    const res = resp.reservation || {};
+    const bInfo = busDe({bus_id: res.bus_id}) || {nombre: res.bus_id || 'Autobús'};
+    const ya = resp.ya_validado;
+    const rev = resp.revertido;
+    const hora = resp.checked_in_at ? new Date(resp.checked_in_at).toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : 'Ahora';
+
+    const badges = (res.seats || []).map(s => h('span', {class:'badge-asiento'}, '#' + s));
+    const btnRevertir = h('button', {class:'btn', type:'button', onclick:() => procesarCheckin(res.folio, 'revert')}, '↩ Deshacer Check-in');
+    const btnSig = h('button', {class:'btn naranja', type:'button', onclick:() => { resBox.replaceChildren(); inpFolio.value = ''; inpFolio.focus(); }}, '▶ Siguiente boleto');
+
+    resBox.replaceChildren(h('div', {class:'checkin-res ' + (rev ? '' : ya ? 'alerta' : 'exito')},
+      h('h4', {class:'checkin-titulo-res'}, rev ? '↩ CHECK-IN DESHECHO' : ya ? '⚠️ ¡ATENCIÓN: BOLETO YA ESCANEADO PREVIAMENTE!' : '✅ ¡CHECK-IN EXITOSO!'),
+      h('p', {}, ya && !rev ? `Este boleto YA había hecho check-in a las ${hora}. Cuidado con boletos duplicados.` : `Asientos validados en Supabase a las ${hora}.`),
+      h('p', {}, h('b', {}, 'Folio: '), res.folio),
+      h('p', {}, h('b', {}, 'Pasajero: '), res.name),
+      h('p', {}, h('b', {}, 'Autobús: '), bInfo.nombre),
+      h('div', {}, h('b', {}, 'Asientos reservados: '), h('div', {class:'badge-asientos'}, ...badges)),
+      h('p', {}, h('b', {}, 'Punto de abordaje: '), res.boarding || 'No especificado'),
+      h('p', {}, h('b', {}, 'Teléfono: '), res.phone || '-'),
+      h('div', {class:'acciones'}, btnSig, !rev ? btnRevertir : null)
+    ));
+  }
+
+  async function iniciarCamara(){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      msgEst.textContent = 'Tu navegador no permite acceso a la cámara. Usa la validación manual por folio.';
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+      video.srcObject = stream;
+      await video.play();
+      visor.hidden = false;
+      escaneando = true;
+      btnScan.textContent = '■ CERRAR CÁMARA';
+      btnScan.className = 'btn negro';
+      msgEst.textContent = 'Apunta la cámara al código QR del boleto…';
+      bucleEscaneo();
+    } catch(err) {
+      msgEst.textContent = 'No se pudo acceder a la cámara (' + err.message + '). Valida por folio.';
+    }
+  }
+
+  function detenerCamara(){
+    escaneando = false;
+    clearTimeout(scanTimer);
+    if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+    visor.hidden = true;
+    btnScan.textContent = '📷 ABRIR ESCÁNER QR';
+    btnScan.className = 'btn naranja';
+  }
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', {willReadFrequently:true});
+
+  async function bucleEscaneo(){
+    if(!escaneando) return;
+    if(video.readyState >= video.HAVE_CURRENT_DATA && Date.now() > cooldown){
+      let textoDetectado = null;
+      if('BarcodeDetector' in window){
+        try {
+          const detector = new window.BarcodeDetector({formats:['qr_code']});
+          const barcodes = await detector.detect(video);
+          if(barcodes && barcodes.length && barcodes[0].rawValue) textoDetectado = barcodes[0].rawValue;
+        } catch {}
+      }
+      if(!textoDetectado && window.jsQR && video.videoWidth > 0){
+        try {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = window.jsQR(imgData.data, imgData.width, imgData.height, {inversionAttempts:'dontInvert'});
+          if(code && code.data) textoDetectado = code.data;
+        } catch {}
+      }
+
+      if(textoDetectado){
+        const f = textoDetectado.trim().toUpperCase();
+        if(f !== ultimoFolio || Date.now() > cooldown){
+          ultimoFolio = f;
+          cooldown = Date.now() + 3500;
+          inpFolio.value = f;
+          procesarCheckin(f);
+        }
+      }
+    }
+    scanTimer = setTimeout(bucleEscaneo, 200);
+  }
+
+  btnScan.addEventListener('click', () => { escaneando ? detenerCamara() : iniciarCamara(); });
+  btnBuscar.addEventListener('click', () => { procesarCheckin(inpFolio.value); });
+  inpFolio.addEventListener('keydown', e => { if(e.key === 'Enter') procesarCheckin(inpFolio.value); });
+
+  box.replaceChildren(
+    h('h3', {}, '📷 ESCANEAR QR / CHECK-IN DE BOLETOS'),
+    h('p', {}, 'Valida los asientos reservados al abordar. Escanea el código QR del boleto del pasajero con la cámara o ingresa su folio para registrar el check-in en Supabase:'),
+    statsBox,
+    h('div', {class:'acciones'}, btnScan),
+    visor,
+    h('div', {style:'margin-top:12px'}, inpFolio),
+    h('div', {class:'acciones'}, btnBuscar),
+    msgEst,
+    resBox
+  );
+
+  actualizarStats();
+  return { detener: detenerCamara };
+}
+
+async function adminOpiniones(box, token){
+  const msg = h('p', {class:'msg'}), lista = h('div', {class:'adm-lista'});
+  box.replaceChildren(h('h3', {}, '💬 OPINIONES DE LOS USUARIOS'), msg, lista);
+  try {
+    const items = await api.getFeedback();
+    if(!items.length) { lista.append(h('p', {}, 'Aún no hay opiniones recibidas.')); return; }
+    items.forEach(c => {
+      const f = c.created_at ? new Date(c.created_at).toLocaleDateString('es-MX', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '';
+      lista.append(h('article', {class:'adm-item'},
+        h('div', {class:'meta'}, h('b', {}, c.nombre || 'Pasajero'), f ? h('time', {}, f) : null),
+        h('p', {}, c.mensaje),
+        h('div', {class:'acciones'},
+          h('button', {class:'btn negro', onclick:async () => {
+            if(!confirm('¿Eliminar esta opinión?')) return;
+            try { await api.adminDeleteFeedback(c.id, token); adminOpiniones(box, token); }
+            catch(e) { msg.textContent = e.message; }
+          }}, 'BORRAR'))
+      ));
+    });
+  } catch(e) { msg.textContent = 'No se pudieron cargar opiniones: ' + e.message; }
+}
+
 function admin(){
   let token = null;
-  const box = h('div', {class:'bus-card'}), trk = h('div', {class:'bus-card'});
-  $app.replaceChildren(...[h('a', {href:'#/'}, '← Ver sitio'), h('h2', {}, 'PANEL ADMIN'), box, cfg.festival.tracker === true ? trk : null].filter(Boolean));
+  const box = h('div', {class:'bus-card'}), trk = h('div', {class:'bus-card'}), chk = h('div', {class:'bus-card checkin-card'}), fdb = h('div', {class:'bus-card'});
+  $app.replaceChildren(...[h('a', {href:'#/'}, '← Ver sitio'), h('h2', {}, 'PANEL ADMIN'), box].filter(Boolean));
   pasoKey();
   function pasoKey(m = ''){
     const inp = h('input', {type:'password', class:'campo', placeholder:'KEY de administrador', maxlength:'64', autocomplete:'current-password'}), msg = h('p', {class:'msg'}, m);
-    const ir = async () => { try { token = (await api.validateKey('admin', inp.value.trim())).token; inp.value = ''; panel(); tracker(); } catch(e) { msg.textContent = e.message; } };
+    const ir = async () => {
+      try {
+        token = (await api.validateKey('admin', inp.value.trim())).token;
+        inp.value = '';
+        $app.replaceChildren(...[h('a', {href:'#/'}, '← Ver sitio'), h('h2', {}, 'PANEL ADMIN'), chk, box, fdb, cfg.festival.tracker === true ? trk : null].filter(Boolean));
+        panel();
+        tracker();
+        chkCtrl = checkinAdmin(chk, token);
+        adminOpiniones(fdb, token);
+      } catch(e) { msg.textContent = e.message; }
+    };
     inp.addEventListener('keydown', e => { if(e.key === 'Enter') ir(); });
     box.replaceChildren(h('h3', {}, 'ENTRAR'), inp, msg, h('button', {class:'btn negro', onclick:ir}, 'ENTRAR'));
   }
@@ -307,15 +633,23 @@ function admin(){
     box.replaceChildren(h('button', {class:'btn naranja', onclick:() => formulario()}, '➕ NUEVO AVISO'), msg, lista);
     let datos = []; try { datos = await api.adminNews(token); } catch(e) { return fallo(e, msg); }
     if(!datos.length) lista.append(h('p', {}, 'Aún no hay avisos. Crea el primero.'));
-    datos.forEach(n => lista.append(h('article', {class:'adm-item' + (n.activo ? '' : ' oculto')},
-      h('div', {class:'meta'}, h('span', {class:'tag ' + etqClase(n.etiqueta)}, n.etiqueta), busChip(n), fechaOk(n.fecha) ? h('time', {}, fmt(n.fecha)) : null),
-      h('h3', {}, (n.fijada ? '📌 ' : '') + n.titulo), h('p', {}, n.texto),
-      h('div', {class:'acciones'},
-        h('button', {class:'btn', onclick:() => formulario(n)}, 'EDITAR'),
-        h('button', {class:'btn', onclick:() => guardar({...n, activo:!n.activo}, msg)}, n.activo ? 'OCULTAR' : 'MOSTRAR'),
-        h('button', {class:'btn', onclick:() => guardar({...n, fijada:!n.fijada}, msg)}, n.fijada ? 'QUITAR PIN' : 'FIJAR'),
-        h('button', {class:'btn negro', onclick:async () => { if(!confirm('¿Borrar este aviso?')) return;
-          try { await api.adminDelete(n.id, token); panel(); } catch(e) { fallo(e, msg); } }}, 'BORRAR')))));
+    datos.forEach(n => {
+      const reaccInfo = [
+        `❤️ ${n.reacc_corazon || 0}`,
+        `😡 ${n.reacc_enojo || 0}`,
+        `😢 ${n.reacc_entristece || 0}`
+      ].join('  ·  ');
+      lista.append(h('article', {class:'adm-item' + (n.activo ? '' : ' oculto')},
+        h('div', {class:'meta'}, h('span', {class:'tag ' + etqClase(n.etiqueta)}, n.etiqueta), busChip(n), fechaOk(n.fecha) ? h('time', {}, fmt(n.fecha)) : null),
+        h('h3', {}, (n.fijada ? '📌 ' : '') + n.titulo), h('p', {}, n.texto),
+        h('p', {style:'font-size:12px;opacity:0.8;margin:4px 0'}, 'Reacciones: ' + reaccInfo),
+        h('div', {class:'acciones'},
+          h('button', {class:'btn', onclick:() => formulario(n)}, 'EDITAR'),
+          h('button', {class:'btn', onclick:() => guardar({...n, activo:!n.activo}, msg)}, n.activo ? 'OCULTAR' : 'MOSTRAR'),
+          h('button', {class:'btn', onclick:() => guardar({...n, fijada:!n.fijada}, msg)}, n.fijada ? 'QUITAR PIN' : 'FIJAR'),
+          h('button', {class:'btn negro', onclick:async () => { if(!confirm('¿Borrar este aviso?')) return;
+            try { await api.adminDelete(n.id, token); panel(); } catch(e) { fallo(e, msg); } }}, 'BORRAR'))));
+    });
   }
   async function guardar(n, msg){ try { await api.adminSave(n, token); panel(); } catch(e) { fallo(e, msg); } }
   function formulario(n = {}){
@@ -346,7 +680,16 @@ function admin(){
 }
 
 /* ---------- Arranque ---------- */
-function route(){ clearInterval(tick); clearInterval(cuenta); clearInterval(carTimer); clearInterval(liveTimer); if(location.hash !== '#/admin') detenerGps(); const m = location.hash.match(/^#\/bus\/([\w-]+)$/); location.hash === '#/admin' ? admin() : m ? reserva(m[1]) : inicio(); scrollTo(0, 0); }
+function route(){
+  clearInterval(tick); clearInterval(cuenta); clearInterval(carTimer); clearInterval(liveTimer);
+  if(location.hash !== '#/admin'){
+    detenerGps();
+    if(chkCtrl){ chkCtrl.detener(); chkCtrl = null; }
+  }
+  const m = location.hash.match(/^#\/bus\/([\w-]+)$/);
+  location.hash === '#/admin' ? admin() : m ? reserva(m[1]) : inicio();
+  scrollTo(0, 0);
+}
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; document.getElementById('btnInstalar')?.removeAttribute('hidden'); });
 (async () => {
   try { cfg = await loadConfig(); api.setBase(cfg.festival.api_base); document.title = cfg.festival.nombre;

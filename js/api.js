@@ -19,6 +19,15 @@ export const wallet = (phone, name) => call('/wallet', {method:"POST", body:{pho
 export const adminNews = token => call('/admin/news', {token});
 export const adminSave = (aviso, token) => call('/admin/news-save', {method:'POST', body:aviso, token});
 export const adminDelete = (id, token) => call('/admin/news-delete', {method:'POST', body:{id}, token});
+// Reacciones a avisos (❤️ corazon, 😡 enojo, 😢 entristece)
+export const reactNews = (id, reaction, prev) => call('/news-react', {method:'POST', body:{id, reaction, prev}});
+// Comentarios y sugerencias de la app
+export const getFeedback = () => call('/feedback');
+export const sendFeedback = (nombre, mensaje) => call('/feedback', {method:'POST', body:{nombre, mensaje}});
+export const adminDeleteFeedback = (id, token) => call('/admin/feedback-delete', {method:'POST', body:{id}, token});
+// Check-in de boletos por código QR / Folio
+export const adminCheckin = (folio, token, accion = 'checkin', forzar = false) => call('/admin/checkin', {method:'POST', body:{folio, accion, forzar}, token});
+export const adminCheckinsSummary = token => call('/admin/checkins-summary', {token});
 // Tracker GPS: lectura pública; envío/paro solo con el token de admin
 export const getPos = bus_id => call('/pos?bus_id='+encodeURIComponent(bus_id));
 export const adminPos = (datos, token) => call('/admin/pos-set', {method:'POST', body:datos, token});
