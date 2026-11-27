@@ -247,7 +247,7 @@ Deno.serve(async (req) => {
         });
       }
       if (req.method === "GET" && path === "/admin/checkins-summary") {
-        const { data } = await db.from("reservations").select("folio,bus_id,name,seats,boarding,checked_in,checked_in_at");
+        const { data } = await db.from("reservations").select("folio,bus_id,name,phone,seats,boarding,checked_in,checked_in_at");
         return out(data || []);
       }
       if (req.method === "POST" && path === "/admin/feedback-delete") {

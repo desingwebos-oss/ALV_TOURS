@@ -5,6 +5,7 @@ import * as api from './api.js';
 import { renderMapa, contarAsientos } from './seats.js';
 import { crearMapa, distanciaKm, coordOk } from './mapa.js';
 import { abrirWallet, guardarPase } from './wallet.js';
+import { crearPdf, cargarImagenes } from './reporte.js';
 
 const h = (t, a = {}, ...k) => { const e = document.createElement(t);
   for (const [x, v] of Object.entries(a)) x === 'class' ? e.className = v : x.startsWith('on') ? e.addEventListener(x.slice(2), v) : e.setAttribute(x, v);
@@ -12,6 +13,9 @@ const h = (t, a = {}, ...k) => { const e = document.createElement(t);
 const $app = document.getElementById('app');
 let cfg, installEvt, tick, cuenta;
 const fmt = f => new Date(f + 'T12:00:00').toLocaleDateString('es-MX', {day:'numeric', month:'long', year:'numeric'});
+
+const cargarPdfLib = () => window.PDFLib ? Promise.resolve(window.PDFLib) : new Promise((ok, no) => {
+  const sc = h('script', {src:'js/vendor/pdf-lib.min.js'}); sc.onload = () => ok(window.PDFLib); sc.onerror = () => no(new Error('No se pudo cargar el generador de PDF')); document.head.append(sc); });
 
 function modal(...contenido){
   const d = h('dialog', {class:'modal bus-card'}, h('button', {class:'cerrar', onclick:() => d.close()}, '✕'), ...contenido);
@@ -574,7 +578,7 @@ function admin(){
   let token = null, abierta = null;
   const login = h('div', {class:'bus-card'}), menu = h('div', {class:'adm-menu'});
   // Cada sección vive en su propio contenedor y se muestra dentro de un modal
-  const box = h('div'), trk = h('div'), chk = h('div'), fdb = h('div');
+  const box = h('div'), trk = h('div'), chk = h('div'), fdb = h('div'), rep = h('div');
   const cabecera = () => [h('a', {href:'#/'}, '← Ver sitio'), h('h2', {}, 'PANEL ADMIN')];
   $app.replaceChildren(...cabecera(), login);
   pasoKey();
@@ -588,6 +592,25 @@ function admin(){
     return d;
   }
   const expira = () => pasoKey('Sesión expirada, escribe la KEY otra vez.');
+  let pdfUrl = null;                        // reporte PDF de reservaciones: siempre se arma con los datos actuales del servidor
+  async function reportePdf(){
+    const msg = h('p', {class:'live-estado'}, 'Consultando reservaciones en vivo…'), acc = h('div', {class:'acciones'});
+    rep.replaceChildren(h('h3', {}, '📄 RESERVACIONES POR BUS'), msg, acc);
+    abrirSeccion(rep, () => { if(pdfUrl){ URL.revokeObjectURL(pdfUrl); pdfUrl = null; } });
+    try {
+      const [filas, PDFLib, imgs] = await Promise.all([api.adminCheckinsSummary(token), cargarPdfLib(), cargarImagenes()]);
+      msg.textContent = 'Generando PDF…';
+      const ahora = new Date(), bytes = await crearPdf(PDFLib, filas, cfg.buses, cfg.festival, imgs, ahora);
+      if(pdfUrl) URL.revokeObjectURL(pdfUrl);
+      pdfUrl = URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}));
+      const sello = ahora.toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '_'), nombre = `reservaciones_por_bus_${sello}.pdf`;
+      const bajar = () => { const a = h('a', {href:pdfUrl, download:nombre}); document.body.append(a); a.click(); a.remove(); };
+      msg.textContent = `✅ Listo: ${filas.length} reservaciones, datos de las ${ahora.toLocaleTimeString('es-MX')} · si no se descargó solo, toca el botón`;
+      acc.append(h('button', {class:'btn naranja', type:'button', onclick:bajar}, '⬇ DESCARGAR PDF'),
+        h('button', {class:'btn', type:'button', onclick:reportePdf}, '🔄 ACTUALIZAR'));
+      bajar();
+    } catch(e) { if(e.status === 401) return expira(); msg.textContent = 'No se pudo generar el PDF: ' + e.message; acc.append(h('button', {class:'btn', type:'button', onclick:reportePdf}, 'REINTENTAR')); }
+  }
   function pintarMenu(){
     const op = (ico, tit, sub, fn) => h('button', {class:'adm-op', type:'button', onclick:fn},
       h('span', {class:'adm-ico', 'aria-hidden':'true'}, ico), h('b', {}, tit), h('small', {}, sub));
@@ -595,6 +618,7 @@ function admin(){
       op('📷', 'Check-in QR', 'Escanear boletos', () => { abrirSeccion(chk, () => chkCtrl && chkCtrl.detener()); chkCtrl && chkCtrl.refrescar(); }),
       op('📰', 'Noticias', 'Publicar y editar avisos', () => { panel(); abrirSeccion(box); }),
       op('💬', 'Opiniones', 'Buzón de los usuarios', () => { adminOpiniones(fdb, token, expira); abrirSeccion(fdb); }),
+      op('📄', 'Reservaciones PDF', 'Descargar lista por bus (en vivo)', reportePdf),
       cfg.festival.tracker === true ? op('📍', 'Ubicación del bus', gps ? '🟢 Transmitiendo' : 'Sin transmitir', () => abrirSeccion(trk)) : null);
   }
 
